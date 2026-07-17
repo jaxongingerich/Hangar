@@ -382,7 +382,7 @@ pub fn list_inbox(state: State<AppState>, project_id: Option<i64>) -> AppResult<
             suggested_bin_name: bname,
         });
     }
-    items.sort_by(|a, b| b.mtime.cmp(&a.mtime));
+    items.sort_by_key(|i| std::cmp::Reverse(i.mtime));
     Ok(items)
 }
 
