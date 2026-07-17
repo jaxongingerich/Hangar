@@ -359,4 +359,119 @@ export const api = {
   todayData: () => invoke<TodayData>("today_data"),
   portfolio: () => invoke<PortfolioRow[]>("portfolio"),
   healthRollup: () => invoke<HealthRollup>("health_rollup"),
+
+  spaceReport: () => invoke<SpaceReport>("space_report"),
+  findDuplicates: () => invoke<DupeGroup[]>("find_duplicates"),
+  archiveProject: (projectId: number) =>
+    invoke<string>("archive_project", { projectId }),
+  listArchives: () => invoke<ArchiveEntry[]>("list_archives"),
+  restoreArchive: (zipPath: string) =>
+    invoke<void>("restore_archive", { zipPath }),
+  snapshotBin: (binId: number, label: string) =>
+    invoke<number>("snapshot_bin", { binId, label }),
+  listSnapshots: (projectId: number) =>
+    invoke<SnapshotRow[]>("list_snapshots", { projectId }),
+  diffSnapshots: (aId: number, bId: number) =>
+    invoke<SnapshotDiff>("diff_snapshots", { aId, bId }),
+  exportJlcpcb: (
+    projectId: number,
+    opts: { binId?: number; snapshotId?: number; dryRun: boolean },
+  ) =>
+    invoke<JlcValidation>("export_jlcpcb", {
+      projectId,
+      binId: opts.binId,
+      snapshotId: opts.snapshotId,
+      dryRun: opts.dryRun,
+    }),
+  normalizeBom: (fileId: number) => invoke<string>("normalize_bom", { fileId }),
+  listComponents: (query?: string) =>
+    invoke<ComponentRow[]>("list_components", { query }),
+  saveComponent: (c: {
+    id?: number;
+    mpn: string;
+    lcsc?: string;
+    description?: string;
+    package?: string;
+    value?: string;
+  }) => invoke<number>("save_component", c),
+  deleteComponent: (id: number) => invoke<void>("delete_component", { id }),
+  useComponent: (componentId: number, projectId: number, qty: number, refDes?: string) =>
+    invoke<void>("use_component", { componentId, projectId, qty, refDes }),
+  undoLastOp: () => invoke<string | null>("undo_last_op"),
+  exportOnePager: (projectId: number) =>
+    invoke<string>("export_one_pager", { projectId }),
 };
+
+export interface SpaceProject {
+  id: number;
+  name: string;
+  emoji: string;
+  color: string;
+  size_bytes: number;
+  file_count: number;
+  bins: [string, number][];
+  days_since_touch: number | null;
+  empty_bins: string[];
+}
+
+export interface BigFile {
+  id: number;
+  project_name: string;
+  name: string;
+  rel_path: string;
+  size: number;
+  abs_path: string;
+}
+
+export interface SpaceReport {
+  projects: SpaceProject[];
+  largest: BigFile[];
+  loose_root_files: number;
+  disk_free_bytes: number;
+  total_bytes: number;
+}
+
+export interface DupeGroup {
+  hash: string;
+  size: number;
+  files: BigFile[];
+}
+
+export interface ArchiveEntry {
+  name: string;
+  path: string;
+  size: number;
+  created_ms: number;
+}
+
+export interface SnapshotRow {
+  id: number;
+  bin_id: number | null;
+  bin_name: string | null;
+  label: string;
+  zip_path: string;
+  file_count: number;
+  created_at: string;
+}
+
+export interface SnapshotDiff {
+  added: string[];
+  removed: string[];
+  changed: string[];
+}
+
+export interface JlcValidation {
+  present: string[];
+  missing: string[];
+  zip_path: string | null;
+}
+
+export interface ComponentRow {
+  id: number;
+  mpn: string;
+  lcsc: string | null;
+  description: string | null;
+  package: string | null;
+  value: string | null;
+  used_in: string[];
+}

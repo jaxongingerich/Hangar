@@ -16,9 +16,12 @@ import { Settings } from "./views/Settings";
 import { ProjectView } from "./views/project/ProjectView";
 import { Today } from "./views/Today";
 import { GlobalProgress } from "./views/GlobalProgress";
+import { Space } from "./views/Space";
+import { useToasts } from "./lib/store";
 
 export default function App() {
   const { view, projectId, setNewProjectOpen } = useUi();
+  const { push } = useToasts();
   const qc = useQueryClient();
   const { data: root, isLoading } = useQuery({
     queryKey: ["root"],
@@ -37,15 +40,31 @@ export default function App() {
 
   // Global shortcuts that aren't view-specific.
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
+    const handler = async (e: KeyboardEvent) => {
       if (e.metaKey && e.key === "n") {
         e.preventDefault();
         setNewProjectOpen(true);
       }
+      // ⌘Z outside a text field = undo the last file operation.
+      if (
+        e.metaKey &&
+        e.key === "z" &&
+        !(e.target instanceof HTMLInputElement) &&
+        !(e.target instanceof HTMLTextAreaElement)
+      ) {
+        e.preventDefault();
+        const undone = await api.undoLastOp();
+        if (undone) {
+          push(`Undone: ${undone}`);
+          qc.invalidateQueries();
+        } else {
+          push("Nothing to undo");
+        }
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [setNewProjectOpen]);
+  }, [setNewProjectOpen, push, qc]);
 
   const content = () => {
     switch (view) {
@@ -63,6 +82,8 @@ export default function App() {
         return <Today />;
       case "progress":
         return <GlobalProgress />;
+      case "space":
+        return <Space />;
       case "settings":
         return <Settings root={root ?? null} />;
       default:

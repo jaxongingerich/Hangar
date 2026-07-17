@@ -1134,7 +1134,7 @@ pub fn health_rollup(state: State<AppState>) -> AppResult<HealthRollup> {
     )?;
     // Free space on the volume holding the root.
     let root = crate::db::get_setting(&conn, "root")?.unwrap_or_else(|| "/".into());
-    let disk_free_bytes = free_space(&root).unwrap_or(0);
+    let disk_free_bytes = free_space_of(&root).unwrap_or(0);
 
     Ok(HealthRollup {
         active,
@@ -1147,7 +1147,7 @@ pub fn health_rollup(state: State<AppState>) -> AppResult<HealthRollup> {
     })
 }
 
-fn free_space(path: &str) -> Option<i64> {
+pub fn free_space_of(path: &str) -> Option<i64> {
     use std::ffi::CString;
     use std::mem::MaybeUninit;
     let c_path = CString::new(path).ok()?;

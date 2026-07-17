@@ -90,6 +90,7 @@ export function ProjectView({ projectId }: { projectId: number }) {
         </button>
 
         <div className="ml-auto flex items-center gap-3">
+          <HeaderMenu projectId={projectId} projectName={project.name} />
           <TimerButton projectId={projectId} />
           <input
             type="date"
@@ -135,6 +136,87 @@ export function ProjectView({ projectId }: { projectId: number }) {
       {tab === "Orders" && <OrdersTab projectId={projectId} />}
       {tab === "Links" && <LinksTab projectId={projectId} />}
     </div>
+  );
+}
+
+function HeaderMenu({
+  projectId,
+  projectName,
+}: {
+  projectId: number;
+  projectName: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const qc = useQueryClient();
+  const { setView } = useUi();
+  const { push } = useToasts();
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="rounded-md border border-line px-2 py-1 text-[12px] text-muted hover:border-solder hover:text-solder"
+        title="Project actions"
+      >
+        ⋯
+      </button>
+      {open && (
+        <div className="absolute right-0 top-8 z-40 w-48 overflow-hidden rounded-lg border border-line bg-panel-2 shadow-xl">
+          <MenuItem
+            label="Export one-pager"
+            onClick={async () => {
+              setOpen(false);
+              const path = await api.exportOnePager(projectId);
+              const { openPath } = await import("@tauri-apps/plugin-opener");
+              await openPath(path);
+              push("One-pager opened — ⌘P to save as PDF");
+            }}
+          />
+          <MenuItem
+            label="Archive project…"
+            danger
+            onClick={async () => {
+              setOpen(false);
+              if (
+                !confirm(
+                  `Archive "${projectName}"?\n\nThe folder is zipped into _Archive/ and the original moves to Trash. Restore any time from Space → Archives.`,
+                )
+              )
+                return;
+              try {
+                await api.archiveProject(projectId);
+                push(`${projectName} archived`);
+                qc.invalidateQueries();
+                setView("dashboard");
+              } catch (e) {
+                push(String(e), "error");
+              }
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MenuItem({
+  label,
+  onClick,
+  danger,
+}: {
+  label: string;
+  onClick: () => void;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`block w-full px-3 py-2 text-left text-[12px] transition-colors hover:bg-panel ${
+        danger ? "text-st-late" : "text-text"
+      }`}
+    >
+      {label}
+    </button>
   );
 }
 

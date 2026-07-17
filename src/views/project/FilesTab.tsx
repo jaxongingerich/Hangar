@@ -6,8 +6,13 @@ import { api, FileRow, ProjectDetail } from "../../lib/api";
 import { formatAgo, formatBytes } from "../../lib/format";
 import { binIcon, fileIcon } from "../../lib/icons";
 import { useToasts } from "../../lib/store";
+import { SnapshotsPanel } from "./SnapshotsPanel";
 
-type Scope = { kind: "all" } | { kind: "root" } | { kind: "bin"; binId: number };
+type Scope =
+  | { kind: "all" }
+  | { kind: "root" }
+  | { kind: "bin"; binId: number }
+  | { kind: "snapshots" };
 
 export function FilesTab({ project }: { project: ProjectDetail }) {
   const [scope, setScope] = useState<Scope>({ kind: "all" });
@@ -22,6 +27,11 @@ export function FilesTab({ project }: { project: ProjectDetail }) {
     queryKey: ["files", project.id, scope],
     queryFn: () =>
       api.listFiles(project.id, binId, scope.kind === "root" ? true : undefined),
+    enabled: scope.kind !== "snapshots",
+  });
+  const { data: snapshots } = useQuery({
+    queryKey: ["snapshots", project.id],
+    queryFn: () => api.listSnapshots(project.id),
   });
 
   const invalidate = () => {
@@ -128,6 +138,14 @@ export function FilesTab({ project }: { project: ProjectDetail }) {
             onDropIds={(ids) => moveTo.mutate({ ids, dest: b.id })}
           />
         ))}
+        <div className="mx-2 my-1.5 border-t border-line" />
+        <RailItem
+          label="Snapshots"
+          icon="📸"
+          count={snapshots?.length ?? 0}
+          active={scope.kind === "snapshots"}
+          onClick={() => setScope({ kind: "snapshots" })}
+        />
         {newBin === null ? (
           <button
             onClick={() => setNewBin("")}
@@ -192,11 +210,41 @@ export function FilesTab({ project }: { project: ProjectDetail }) {
               />
             </>
           ) : (
-            <span className="font-mono text-[11px] text-muted">
-              {rows.length} files · drag rows onto a bin to move them
-            </span>
+            <>
+              <span className="font-mono text-[11px] text-muted">
+                {rows.length} files · drag rows onto a bin to move them
+              </span>
+              {scope.kind === "bin" && (
+                <BinActions
+                  project={project}
+                  binId={scope.binId}
+                  onChange={() => {
+                    invalidate();
+                    qc.invalidateQueries({ queryKey: ["snapshots", project.id] });
+                  }}
+                />
+              )}
+            </>
           )}
+          {selectedRows.length === 1 &&
+            selectedRows[0].ext === "csv" && (
+              <ToolbarBtn
+                label="Normalize BOM → JLC"
+                onClick={async () => {
+                  try {
+                    const out = await api.normalizeBom(selectedRows[0].id);
+                    push(`Wrote ${out.split("/").pop()}`);
+                    invalidate();
+                  } catch (e) {
+                    push(String(e), "error");
+                  }
+                }}
+              />
+            )}
         </div>
+        {scope.kind === "snapshots" ? (
+          <SnapshotsPanel project={project} snapshots={snapshots ?? []} />
+        ) : (
         <FileList
           rows={rows}
           selected={selected}
@@ -209,7 +257,62 @@ export function FilesTab({ project }: { project: ProjectDetail }) {
           onCancelRename={() => setRenaming(null)}
           onQuickLook={(f) => api.quickLook(f.abs_path)}
         />
+        )}
       </div>
+    </div>
+  );
+}
+
+function BinActions({
+  project,
+  binId,
+  onChange,
+}: {
+  project: ProjectDetail;
+  binId: number;
+  onChange: () => void;
+}) {
+  const { push } = useToasts();
+  const bin = project.bins.find((b) => b.id === binId);
+  const isGerbers = bin?.name.toLowerCase().includes("gerber") ?? false;
+
+  return (
+    <div className="ml-auto flex items-center gap-1">
+      <ToolbarBtn
+        label="📸 Snapshot"
+        onClick={async () => {
+          const label = prompt("Snapshot label (e.g. Rev A):");
+          if (!label?.trim()) return;
+          try {
+            await api.snapshotBin(binId, label.trim());
+            push(`Snapshot "${label.trim()}" saved`);
+            onChange();
+          } catch (e) {
+            push(String(e), "error");
+          }
+        }}
+      />
+      {isGerbers && (
+        <ToolbarBtn
+          label="Export JLC"
+          onClick={async () => {
+            try {
+              const check = await api.exportJlcpcb(project.id, { binId, dryRun: true });
+              const proceed =
+                check.missing.length === 0 ||
+                confirm(
+                  `Missing layers:\n• ${check.missing.join("\n• ")}\n\nExport anyway?`,
+                );
+              if (!proceed) return;
+              const result = await api.exportJlcpcb(project.id, { binId, dryRun: false });
+              push(`JLC package → ${result.zip_path?.split("/").pop()}`);
+              onChange();
+            } catch (e) {
+              push(String(e), "error");
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -40,6 +40,63 @@ pub fn auto_log(conn: &Connection, project_id: i64, body: &str) -> AppResult<()>
     Ok(())
 }
 
+/// Record an operation in the undo journal (50-step stack).
+pub fn journal(
+    conn: &Connection,
+    kind: &str,
+    description: &str,
+    inverse: Option<serde_json::Value>,
+) -> AppResult<()> {
+    conn.execute(
+        "INSERT INTO op_journal (kind, description, inverse_json) VALUES (?1, ?2, ?3)",
+        params![kind, description, inverse.map(|v| v.to_string())],
+    )?;
+    conn.execute(
+        "DELETE FROM op_journal WHERE id NOT IN (SELECT id FROM op_journal ORDER BY id DESC LIMIT 50)",
+        [],
+    )?;
+    Ok(())
+}
+
+/// Undo the most recent undoable operation. Returns its description.
+pub fn undo_last(conn: &Connection, root: &Path) -> AppResult<Option<String>> {
+    let row: Option<(i64, String, String)> = conn
+        .query_row(
+            "SELECT id, description, inverse_json FROM op_journal
+             WHERE undone = 0 AND inverse_json IS NOT NULL
+             ORDER BY id DESC LIMIT 1",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
+        .ok();
+    let Some((id, description, inverse_json)) = row else {
+        return Ok(None);
+    };
+    let inverse: serde_json::Value = serde_json::from_str(&inverse_json)?;
+    if let Some(renames) = inverse.get("renames").and_then(|v| v.as_array()) {
+        for pair in renames {
+            let (Some(from), Some(to)) = (
+                pair.get(0).and_then(|v| v.as_str()),
+                pair.get(1).and_then(|v| v.as_str()),
+            ) else {
+                continue;
+            };
+            let from = PathBuf::from(from);
+            let to = PathBuf::from(to);
+            assert_under_root(root, &from)?;
+            assert_under_root(root, &to)?;
+            if from.exists() && !to.exists() {
+                if let Some(parent) = to.parent() {
+                    std::fs::create_dir_all(parent)?;
+                }
+                std::fs::rename(&from, &to)?;
+            }
+        }
+    }
+    conn.execute("UPDATE op_journal SET undone = 1 WHERE id = ?1", [id])?;
+    Ok(Some(description))
+}
+
 /// Pick a collision-free name in `dir` by appending " (n)" before the extension.
 pub fn dedupe_name(dir: &Path, name: &str) -> String {
     if !dir.join(name).exists() {
@@ -94,6 +151,14 @@ pub fn rename_file(conn: &Connection, root: &Path, file_id: i64, new_name: &str)
         params![new_rel, new_name, ext, file_id],
     )?;
     auto_log(conn, project_id, &format!("renamed {} → {}", old_name, new_name))?;
+    journal(
+        conn,
+        "rename",
+        &format!("Rename {old_name} → {new_name}"),
+        Some(serde_json::json!({
+            "renames": [[new_abs.to_string_lossy(), old_abs.to_string_lossy()]]
+        })),
+    )?;
     Ok(())
 }
 
@@ -107,6 +172,7 @@ pub fn move_files(
     let mut moved = 0usize;
     let mut last_project = None;
     let mut dest_label = "project root".to_string();
+    let mut rename_pairs: Vec<(String, String)> = vec![];
     for &file_id in file_ids {
         let (project_id, rel_path): (i64, String) = conn.query_row(
             "SELECT project_id, rel_path FROM files WHERE id = ?1",
@@ -157,11 +223,23 @@ pub fn move_files(
             "UPDATE files SET rel_path = ?1, name = ?2, bin_id = ?3 WHERE id = ?4",
             params![new_rel, final_name, dest_bin_id, file_id],
         )?;
+        rename_pairs.push((
+            dest.to_string_lossy().to_string(),
+            src.to_string_lossy().to_string(),
+        ));
         moved += 1;
         last_project = Some(project_id);
     }
     if let Some(pid) = last_project {
         auto_log(conn, pid, &format!("moved {moved} file(s) → {dest_label}"))?;
+    }
+    if !rename_pairs.is_empty() {
+        journal(
+            conn,
+            "move",
+            &format!("Move {moved} file(s) → {dest_label}"),
+            Some(serde_json::json!({ "renames": rename_pairs })),
+        )?;
     }
     Ok(moved)
 }

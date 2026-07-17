@@ -1,6 +1,7 @@
 mod commands;
 mod commands_m1;
 pub mod commands_m2;
+pub mod commands_m3;
 pub mod db;
 pub mod error;
 pub mod ops;
@@ -119,6 +120,22 @@ pub fn run() {
             commands_m2::today_data,
             commands_m2::portfolio,
             commands_m2::health_rollup,
+            commands_m3::space_report,
+            commands_m3::find_duplicates,
+            commands_m3::archive_project,
+            commands_m3::list_archives,
+            commands_m3::restore_archive,
+            commands_m3::snapshot_bin,
+            commands_m3::list_snapshots,
+            commands_m3::diff_snapshots,
+            commands_m3::export_jlcpcb,
+            commands_m3::normalize_bom,
+            commands_m3::list_components,
+            commands_m3::save_component,
+            commands_m3::delete_component,
+            commands_m3::use_component,
+            commands_m3::undo_last_op,
+            commands_m3::export_one_pager,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

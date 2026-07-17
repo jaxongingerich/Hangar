@@ -23,6 +23,10 @@ fn migrate(conn: &Connection) -> AppResult<()> {
         conn.execute_batch(SCHEMA_V2)?;
         conn.pragma_update(None, "user_version", 2)?;
     }
+    if version < 3 {
+        conn.execute_batch(SCHEMA_V3)?;
+        conn.pragma_update(None, "user_version", 3)?;
+    }
     Ok(())
 }
 
@@ -266,6 +270,17 @@ CREATE TABLE IF NOT EXISTS ideas (
   name TEXT NOT NULL,
   note TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+"#;
+
+const SCHEMA_V3: &str = r#"
+CREATE TABLE IF NOT EXISTS op_journal (
+  id INTEGER PRIMARY KEY,
+  ts TEXT NOT NULL DEFAULT (datetime('now')),
+  kind TEXT NOT NULL,
+  description TEXT NOT NULL,
+  inverse_json TEXT,
+  undone INTEGER NOT NULL DEFAULT 0
 );
 "#;
 
