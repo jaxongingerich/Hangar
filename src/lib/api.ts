@@ -99,6 +99,120 @@ export interface IdeaRow {
   created_at: string;
 }
 
+export interface MilestoneRow {
+  id: number;
+  title: string;
+  state: "todo" | "doing" | "done";
+  weight: number;
+  sort_order: number;
+  task_count: number;
+  done_task_count: number;
+}
+
+export interface TaskRow {
+  id: number;
+  project_id: number;
+  project_name: string;
+  project_emoji: string;
+  milestone_id: number | null;
+  title: string;
+  done: boolean;
+  due: string | null;
+  priority: "low" | "med" | "high";
+  blocked: boolean;
+  blocked_reason: string | null;
+  recurrence: string | null;
+}
+
+export interface HistoryPoint {
+  ts: string;
+  value: number;
+}
+
+export interface ProgressStats {
+  history: HistoryPoint[];
+  velocity_per_week: number;
+  projected_finish: string | null;
+  health: "on_track" | "at_risk" | "late";
+  days_since_touch: number | null;
+  hours_this_week: number;
+  heatmap: number[];
+  blocked_count: number;
+}
+
+export interface OrderRow {
+  id: number;
+  project_id: number;
+  project_name: string;
+  vendor: string;
+  ref: string | null;
+  items: string | null;
+  cost_cents: number;
+  currency: string;
+  ordered_at: string;
+  eta: string | null;
+  status: "ordered" | "shipped" | "arrived" | "issue";
+  tracking_url: string | null;
+  notes: string | null;
+}
+
+export interface SpendSummary {
+  total_cents: number;
+  in_flight_cents: number;
+  by_month: [string, number][];
+}
+
+export interface LinkRow {
+  id: number;
+  title: string;
+  url: string;
+  kind: string;
+}
+
+export interface GitBadge {
+  branch: string;
+  dirty: boolean;
+}
+
+export interface ActiveTimer {
+  project_id: number;
+  project_name: string;
+  started_at: string;
+}
+
+export interface TodayData {
+  overdue: TaskRow[];
+  due_today: TaskRow[];
+  high_priority: TaskRow[];
+  arriving: OrderRow[];
+  suggestions: [number, string, string, string][];
+}
+
+export interface PortfolioRow {
+  id: number;
+  emoji: string;
+  name: string;
+  color: string;
+  progress: number;
+  health: "on_track" | "at_risk" | "late";
+  velocity_per_week: number;
+  target_date: string | null;
+  projected_finish: string | null;
+  days_since_touch: number | null;
+  blocked_count: number;
+  history: HistoryPoint[];
+}
+
+export interface HealthRollup {
+  active: number;
+  at_risk: number;
+  late: number;
+  open_orders: number;
+  in_flight_cents: number;
+  disk_free_bytes: number;
+  hours_this_week: number;
+}
+
 export interface ProjectPatch {
   name?: string;
   emoji?: string;
@@ -167,4 +281,82 @@ export const api = {
   createIdea: (name: string, note?: string) =>
     invoke<number>("create_idea", { name, note }),
   deleteIdea: (id: number) => invoke<void>("delete_idea", { id }),
+
+  listMilestones: (projectId: number) =>
+    invoke<MilestoneRow[]>("list_milestones", { projectId }),
+  addMilestone: (projectId: number, title: string, weight?: number) =>
+    invoke<number>("add_milestone", { projectId, title, weight }),
+  setMilestoneState: (milestoneId: number, newState: string) =>
+    invoke<void>("set_milestone_state", { milestoneId, newState }),
+  updateMilestone: (milestoneId: number, title?: string, weight?: number) =>
+    invoke<void>("update_milestone", { milestoneId, title, weight }),
+  deleteMilestone: (milestoneId: number) =>
+    invoke<void>("delete_milestone", { milestoneId }),
+  applyMilestoneTemplate: (projectId: number, template: string) =>
+    invoke<void>("apply_milestone_template", { projectId, template }),
+  setProgressMode: (projectId: number, mode: string) =>
+    invoke<void>("set_progress_mode", { projectId, mode }),
+
+  listTasks: (projectId: number, includeDone?: boolean) =>
+    invoke<TaskRow[]>("list_tasks", { projectId, includeDone }),
+  addTask: (task: {
+    project_id: number;
+    title: string;
+    due?: string | null;
+    priority?: string;
+    milestone_id?: number | null;
+    recurrence?: string | null;
+  }) => invoke<number>("add_task", { task }),
+  toggleTask: (taskId: number) => invoke<void>("toggle_task", { taskId }),
+  updateTask: (
+    taskId: number,
+    patch: Partial<{
+      title: string;
+      due: string | null;
+      priority: string;
+      blocked: boolean;
+      blocked_reason: string | null;
+      milestone_id: number | null;
+      recurrence: string | null;
+    }>,
+  ) => invoke<void>("update_task", { taskId, patch }),
+  deleteTask: (taskId: number) => invoke<void>("delete_task", { taskId }),
+
+  getProgressStats: (projectId: number) =>
+    invoke<ProgressStats>("get_progress_stats", { projectId }),
+  draftStatusReport: (projectId: number) =>
+    invoke<string>("draft_status_report", { projectId }),
+
+  listOrders: (projectId?: number) =>
+    invoke<OrderRow[]>("list_orders", { projectId }),
+  addOrder: (order: {
+    project_id: number;
+    vendor: string;
+    ref?: string | null;
+    items?: string | null;
+    cost_cents: number;
+    eta?: string | null;
+    tracking_url?: string | null;
+    notes?: string | null;
+  }) => invoke<number>("add_order", { order }),
+  updateOrderStatus: (orderId: number, status: string) =>
+    invoke<void>("update_order_status", { orderId, status }),
+  deleteOrder: (orderId: number) => invoke<void>("delete_order", { orderId }),
+  spendSummary: (projectId?: number) =>
+    invoke<SpendSummary>("spend_summary", { projectId }),
+
+  listLinks: (projectId: number) => invoke<LinkRow[]>("list_links", { projectId }),
+  addLink: (projectId: number, title: string, url: string, kind: string) =>
+    invoke<number>("add_link", { projectId, title, url, kind }),
+  deleteLink: (linkId: number) => invoke<void>("delete_link", { linkId }),
+  gitBadge: (projectId: number) =>
+    invoke<GitBadge | null>("git_badge", { projectId }),
+
+  startTimer: (projectId: number) => invoke<void>("start_timer", { projectId }),
+  stopTimer: () => invoke<void>("stop_timer"),
+  activeTimer: () => invoke<ActiveTimer | null>("active_timer"),
+
+  todayData: () => invoke<TodayData>("today_data"),
+  portfolio: () => invoke<PortfolioRow[]>("portfolio"),
+  healthRollup: () => invoke<HealthRollup>("health_rollup"),
 };

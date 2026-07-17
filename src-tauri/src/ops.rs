@@ -190,6 +190,68 @@ pub fn trash_files(conn: &Connection, root: &Path, file_ids: &[i64]) -> AppResul
     Ok(trashed)
 }
 
+/// Weighted milestone progress: done milestones count fully, "doing"
+/// milestones earn partial credit from their checked tasks.
+pub fn weighted_progress(conn: &Connection, project_id: i64) -> AppResult<Option<i64>> {
+    let mut stmt = conn.prepare(
+        "SELECT m.id, m.state, m.weight,
+                (SELECT COUNT(*) FROM tasks t WHERE t.milestone_id = m.id),
+                (SELECT COUNT(*) FROM tasks t WHERE t.milestone_id = m.id AND t.done = 1)
+         FROM milestones m WHERE m.project_id = ?1",
+    )?;
+    let rows: Vec<(String, i64, i64, i64)> = stmt
+        .query_map([project_id], |r| {
+            Ok((
+                r.get::<_, String>(1)?,
+                r.get::<_, i64>(2)?,
+                r.get::<_, i64>(3)?,
+                r.get::<_, i64>(4)?,
+            ))
+        })?
+        .filter_map(|r| r.ok())
+        .collect();
+    if rows.is_empty() {
+        return Ok(None);
+    }
+    let total: f64 = rows.iter().map(|(_, w, _, _)| *w.max(&1) as f64).sum();
+    let earned: f64 = rows
+        .iter()
+        .map(|(state, w, tasks, done_tasks)| {
+            let w = *w.max(&1) as f64;
+            match state.as_str() {
+                "done" => w,
+                "doing" => {
+                    if *tasks > 0 {
+                        w * (*done_tasks as f64 / *tasks as f64)
+                    } else {
+                        w * 0.5
+                    }
+                }
+                _ => 0.0,
+            }
+        })
+        .sum();
+    Ok(Some(((earned / total) * 100.0).round() as i64))
+}
+
+/// If the project derives progress from milestones, recompute and record it.
+pub fn recompute_progress(conn: &Connection, project_id: i64) -> AppResult<()> {
+    let (mode, current): (String, i64) = conn.query_row(
+        "SELECT progress_mode, progress FROM projects WHERE id = ?1",
+        [project_id],
+        |r| Ok((r.get(0)?, r.get(1)?)),
+    )?;
+    if mode != "milestones" {
+        return Ok(());
+    }
+    if let Some(value) = weighted_progress(conn, project_id)? {
+        if value != current {
+            set_progress(conn, project_id, value, "milestones")?;
+        }
+    }
+    Ok(())
+}
+
 pub fn set_progress(conn: &Connection, project_id: i64, value: i64, source: &str) -> AppResult<()> {
     let value = value.clamp(0, 100);
     conn.execute(

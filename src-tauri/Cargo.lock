@@ -1564,6 +1564,7 @@ dependencies = [
  "blake3",
  "chrono",
  "dirs",
+ "libc",
  "notify",
  "rusqlite",
  "serde",

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ProjectCard as Card } from "../lib/api";
 import { SortMode, useToasts, useUi } from "../lib/store";
 import { ProjectCard } from "../components/ProjectCard";
+import { formatBytes } from "../lib/format";
 
 const SORTS: { id: SortMode; label: string }[] = [
   { id: "recent", label: "Recent" },
@@ -36,17 +37,32 @@ export function Dashboard() {
     queryFn: api.listProjects,
   });
 
+  const { data: rollup } = useQuery({
+    queryKey: ["rollup"],
+    queryFn: api.healthRollup,
+  });
+
   const cards = sortCards(projects ?? [], sort);
-  const active = cards.filter((c) => c.status === "active").length;
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <div className="flex items-center gap-3 px-6 pb-4 pt-5">
         <h1 className="text-[20px] font-semibold">Dashboard</h1>
-        {projects && (
-          <span className="font-mono text-[11px] text-muted">
-            {cards.length} projects · {active} active
-          </span>
+        {rollup && (
+          <div className="flex items-center gap-3 font-mono text-[11px] text-muted">
+            <span>{rollup.active} active</span>
+            {rollup.at_risk > 0 && (
+              <span className="text-st-risk">{rollup.at_risk} at risk</span>
+            )}
+            {rollup.late > 0 && <span className="text-st-late">{rollup.late} late</span>}
+            {rollup.open_orders > 0 && (
+              <span>
+                {rollup.open_orders} orders · ${(rollup.in_flight_cents / 100).toFixed(0)} in flight
+              </span>
+            )}
+            {rollup.hours_this_week > 0 && <span>{rollup.hours_this_week}h this week</span>}
+            <span>{formatBytes(rollup.disk_free_bytes)} free</span>
+          </div>
         )}
         <div className="ml-auto flex items-center gap-2">
           <div className="flex rounded-lg border border-line p-0.5">

@@ -1,5 +1,6 @@
 mod commands;
 mod commands_m1;
+pub mod commands_m2;
 pub mod db;
 pub mod error;
 pub mod ops;
@@ -89,6 +90,35 @@ pub fn run() {
             commands_m1::list_ideas,
             commands_m1::create_idea,
             commands_m1::delete_idea,
+            commands_m2::list_milestones,
+            commands_m2::add_milestone,
+            commands_m2::set_milestone_state,
+            commands_m2::update_milestone,
+            commands_m2::delete_milestone,
+            commands_m2::apply_milestone_template,
+            commands_m2::set_progress_mode,
+            commands_m2::list_tasks,
+            commands_m2::add_task,
+            commands_m2::toggle_task,
+            commands_m2::update_task,
+            commands_m2::delete_task,
+            commands_m2::get_progress_stats,
+            commands_m2::draft_status_report,
+            commands_m2::list_orders,
+            commands_m2::add_order,
+            commands_m2::update_order_status,
+            commands_m2::delete_order,
+            commands_m2::spend_summary,
+            commands_m2::list_links,
+            commands_m2::add_link,
+            commands_m2::delete_link,
+            commands_m2::git_badge,
+            commands_m2::start_timer,
+            commands_m2::stop_timer,
+            commands_m2::active_timer,
+            commands_m2::today_data,
+            commands_m2::portfolio,
+            commands_m2::health_rollup,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

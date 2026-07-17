@@ -14,6 +14,8 @@ import { Placeholder } from "./views/Placeholder";
 import { Inbox } from "./views/Inbox";
 import { Settings } from "./views/Settings";
 import { ProjectView } from "./views/project/ProjectView";
+import { Today } from "./views/Today";
+import { GlobalProgress } from "./views/GlobalProgress";
 
 export default function App() {
   const { view, projectId, setNewProjectOpen } = useUi();
@@ -57,6 +59,10 @@ export default function App() {
         );
       case "inbox":
         return <Inbox />;
+      case "today":
+        return <Today />;
+      case "progress":
+        return <GlobalProgress />;
       case "settings":
         return <Settings root={root ?? null} />;
       default:

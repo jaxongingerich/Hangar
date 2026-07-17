@@ -6,6 +6,9 @@ import { STATUS_COLORS, STATUS_LABELS } from "../../lib/format";
 import { ProgressRing } from "../../components/ProgressRing";
 import { FilesTab } from "./FilesTab";
 import { LogTab } from "./LogTab";
+import { ProgressTab } from "./ProgressTab";
+import { OrdersTab } from "./OrdersTab";
+import { LinksTab } from "./LinksTab";
 
 const TABS = ["Files", "Progress", "Log", "Orders", "Links"] as const;
 type Tab = (typeof TABS)[number];
@@ -87,15 +90,25 @@ export function ProjectView({ projectId }: { projectId: number }) {
         </button>
 
         <div className="ml-auto flex items-center gap-3">
+          <TimerButton projectId={projectId} />
           <input
-            type="range"
-            min={0}
-            max={100}
-            value={project.progress}
-            onChange={(e) => setProgress.mutate(Number(e.target.value))}
-            className="w-28 accent-(--color-solder)"
-            title="Progress"
+            type="date"
+            value={project.target_date ?? ""}
+            onChange={(e) => update.mutate({ target_date: e.target.value || null })}
+            className="rounded-md border border-line bg-panel px-2 py-1 font-mono text-[11px] text-muted"
+            title="Target date"
           />
+          {project.progress_mode === "manual" && (
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={project.progress}
+              onChange={(e) => setProgress.mutate(Number(e.target.value))}
+              className="w-24 accent-(--color-solder)"
+              title="Progress"
+            />
+          )}
           <ProgressRing value={project.progress} color={ringColor} size={36} stroke={3} />
         </div>
       </div>
@@ -117,15 +130,38 @@ export function ProjectView({ projectId }: { projectId: number }) {
       </div>
 
       {tab === "Files" && <FilesTab project={project} />}
+      {tab === "Progress" && <ProgressTab project={project} />}
       {tab === "Log" && <LogTab projectId={projectId} />}
-      {(tab === "Progress" || tab === "Orders" || tab === "Links") && (
-        <div className="flex flex-1 items-center justify-center text-muted">
-          <p>
-            {tab} arrives in the next build phase.
-          </p>
-        </div>
-      )}
+      {tab === "Orders" && <OrdersTab projectId={projectId} />}
+      {tab === "Links" && <LinksTab projectId={projectId} />}
     </div>
+  );
+}
+
+function TimerButton({ projectId }: { projectId: number }) {
+  const qc = useQueryClient();
+  const { data: timer } = useQuery({
+    queryKey: ["timer"],
+    queryFn: api.activeTimer,
+    refetchInterval: 30_000,
+  });
+  const runningHere = timer?.project_id === projectId;
+  return (
+    <button
+      onClick={async () => {
+        if (runningHere) await api.stopTimer();
+        else await api.startTimer(projectId);
+        qc.invalidateQueries({ queryKey: ["timer"] });
+      }}
+      className={`rounded-md border px-2.5 py-1 font-mono text-[11px] transition-colors ${
+        runningHere
+          ? "border-solder bg-solder/10 text-solder"
+          : "border-line text-muted hover:border-solder hover:text-solder"
+      }`}
+      title={runningHere ? "Stop timer" : "Start timer"}
+    >
+      {runningHere ? "■ stop" : "▶ start"}
+    </button>
   );
 }
 
