@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "../lib/api";
+import { api, InboxPlanItem } from "../lib/api";
 import { formatAgo, formatBytes } from "../lib/format";
 import { fileIcon } from "../lib/icons";
 import { useToasts } from "../lib/store";
+import { PlanSheet } from "../components/PlanSheet";
 
 export function Inbox() {
   const [targetProject, setTargetProject] = useState<number | null>(null);
+  const [aiPlan, setAiPlan] = useState<InboxPlanItem[] | null>(null);
+  const [aiBusy, setAiBusy] = useState(false);
   // Per-item bin overrides (path → bin id or null for project root).
   const [overrides, setOverrides] = useState<Record<string, number | null>>({});
   const qc = useQueryClient();
@@ -88,8 +91,54 @@ export function Inbox() {
           >
             File all
           </button>
+          <button
+            onClick={async () => {
+              setAiBusy(true);
+              try {
+                const plan = await api.aiOrganizeInbox();
+                if (plan.length === 0) {
+                  push("AI had no suggestions", "error");
+                } else {
+                  setAiPlan(plan);
+                }
+              } catch (e) {
+                push(String(e), "error");
+              } finally {
+                setAiBusy(false);
+              }
+            }}
+            disabled={!items || items.length === 0 || aiBusy}
+            className="rounded-lg border border-line px-3.5 py-1.5 text-[12px] font-medium text-muted transition-colors hover:border-solder hover:text-solder disabled:opacity-40"
+          >
+            {aiBusy ? "Thinking…" : "✳️ Organize with AI"}
+          </button>
         </div>
       </div>
+
+      {aiPlan && (
+        <PlanSheet
+          title="AI filing plan"
+          rows={aiPlan.map((p) => ({
+            key: p.path,
+            left: p.name,
+            right: `${p.project_name} / ${p.bin_name}`,
+            detail: p.reason,
+          }))}
+          busy={file.isPending}
+          onCancel={() => setAiPlan(null)}
+          onApprove={(keys) => {
+            const approved = aiPlan.filter((p) => keys.includes(p.path));
+            file.mutate(
+              approved.map((p) => ({
+                path: p.path,
+                project_id: p.project_id,
+                bin_id: p.bin_id,
+              })),
+            );
+            setAiPlan(null);
+          }}
+        />
+      )}
 
       <div className="flex-1 overflow-y-auto px-6 pb-6">
         {!items || items.length === 0 ? (

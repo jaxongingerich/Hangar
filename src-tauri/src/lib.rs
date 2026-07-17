@@ -3,6 +3,8 @@ mod commands_m1;
 pub mod commands_m2;
 pub mod commands_m3;
 pub mod commands_m4;
+pub mod commands_m5;
+pub mod ai;
 pub mod db;
 pub mod error;
 pub mod ops;
@@ -193,6 +195,19 @@ pub fn run() {
             commands_m4::set_backup_dir,
             commands_m4::run_backup,
             commands_m4::global_timeline,
+            commands_m5::ai_get_config,
+            commands_m5::ai_set_config,
+            commands_m5::ai_set_key,
+            commands_m5::ai_test,
+            commands_m5::ai_ollama_models,
+            commands_m5::ai_usage,
+            commands_m5::ai_organize_inbox,
+            commands_m5::ai_summarize,
+            commands_m5::ai_auto_milestones,
+            commands_m5::ai_status_report,
+            commands_m5::ai_weekly_digest,
+            commands_m5::ai_smart_rename,
+            commands_m5::ai_project_chat,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -22,6 +22,8 @@ interface UiState {
   setNewProjectOpen: (open: boolean) => void;
   paletteOpen: boolean;
   setPaletteOpen: (open: boolean) => void;
+  aiResult: { title: string; text: string } | null;
+  setAiResult: (r: { title: string; text: string } | null) => void;
 }
 
 export const useUi = create<UiState>((set) => ({
@@ -35,6 +37,8 @@ export const useUi = create<UiState>((set) => ({
   setNewProjectOpen: (newProjectOpen) => set({ newProjectOpen }),
   paletteOpen: false,
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
+  aiResult: null,
+  setAiResult: (aiResult) => set({ aiResult }),
 }));
 
 // Lightweight toast bus.

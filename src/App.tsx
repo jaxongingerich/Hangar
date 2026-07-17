@@ -8,6 +8,7 @@ import { IconRail } from "./components/IconRail";
 import { NewProjectModal } from "./components/NewProjectModal";
 import { CommandPalette } from "./components/CommandPalette";
 import { Toasts } from "./components/Toasts";
+import { AiResultModal } from "./components/AiResultModal";
 import { Dashboard } from "./views/Dashboard";
 import { RootPicker } from "./views/RootPicker";
 import { Placeholder } from "./views/Placeholder";
@@ -157,6 +158,7 @@ export default function App() {
       )}
       <NewProjectModal />
       <CommandPalette />
+      <AiResultModal />
       <Toasts />
     </div>
   );

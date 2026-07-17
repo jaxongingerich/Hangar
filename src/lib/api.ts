@@ -440,7 +440,56 @@ export const api = {
   runBackup: () => invoke<string>("run_backup"),
   globalTimeline: (limit?: number) =>
     invoke<TimelineRow[]>("global_timeline", { limit }),
+
+  aiGetConfig: () => invoke<AiConfig>("ai_get_config"),
+  aiSetConfig: (provider: string, model: string, baseUrl: string) =>
+    invoke<void>("ai_set_config", { provider, model, baseUrl }),
+  aiSetKey: (key: string) => invoke<void>("ai_set_key", { key }),
+  aiTest: () => invoke<string>("ai_test"),
+  aiOllamaModels: () => invoke<string[]>("ai_ollama_models"),
+  aiUsage: () => invoke<AiUsage>("ai_usage"),
+  aiOrganizeInbox: () => invoke<InboxPlanItem[]>("ai_organize_inbox"),
+  aiSummarize: (projectId: number) =>
+    invoke<string>("ai_summarize", { projectId }),
+  aiAutoMilestones: (projectId: number, description: string) =>
+    invoke<string[]>("ai_auto_milestones", { projectId, description }),
+  aiStatusReport: (projectId: number) =>
+    invoke<string>("ai_status_report", { projectId }),
+  aiWeeklyDigest: () => invoke<string>("ai_weekly_digest"),
+  aiSmartRename: (binId: number) =>
+    invoke<RenamePlanItem[]>("ai_smart_rename", { binId }),
+  aiProjectChat: (projectId: number, messages: { role: string; content: string }[]) =>
+    invoke<string>("ai_project_chat", { projectId, messages }),
 };
+
+export interface AiConfig {
+  provider: string;
+  model: string;
+  base_url: string;
+  has_key: boolean;
+}
+
+export interface AiUsage {
+  month_runs: number;
+  month_tokens_in: number;
+  month_tokens_out: number;
+}
+
+export interface InboxPlanItem {
+  path: string;
+  name: string;
+  project_id: number;
+  project_name: string;
+  bin_id: number | null;
+  bin_name: string;
+  reason: string;
+}
+
+export interface RenamePlanItem {
+  file_id: number;
+  old_name: string;
+  new_name: string;
+}
 
 export interface CollectionRow {
   id: number;

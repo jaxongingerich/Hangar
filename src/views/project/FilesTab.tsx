@@ -7,6 +7,8 @@ import { formatAgo, formatBytes } from "../../lib/format";
 import { binIcon, fileIcon } from "../../lib/icons";
 import { useToasts } from "../../lib/store";
 import { SnapshotsPanel } from "./SnapshotsPanel";
+import { PlanSheet } from "../../components/PlanSheet";
+import { RenamePlanItem } from "../../lib/api";
 
 type Scope =
   | { kind: "all" }
@@ -345,11 +347,56 @@ function BinActions({
   onChange: () => void;
 }) {
   const { push } = useToasts();
+  const [renamePlan, setRenamePlan] = useState<RenamePlanItem[] | null>(null);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [applying, setApplying] = useState(false);
   const bin = project.bins.find((b) => b.id === binId);
   const isGerbers = bin?.name.toLowerCase().includes("gerber") ?? false;
 
   return (
     <div className="ml-auto flex items-center gap-1">
+      {renamePlan && (
+        <PlanSheet
+          title={`AI rename scheme — ${bin?.name}`}
+          rows={renamePlan.map((r) => ({
+            key: String(r.file_id),
+            left: r.old_name,
+            right: r.new_name,
+          }))}
+          busy={applying}
+          onCancel={() => setRenamePlan(null)}
+          onApprove={async (keys) => {
+            setApplying(true);
+            try {
+              for (const r of renamePlan.filter((r) => keys.includes(String(r.file_id)))) {
+                await api.renameFile(r.file_id, r.new_name);
+              }
+              push(`Renamed ${keys.length} file${keys.length === 1 ? "" : "s"} — ⌘Z to undo`);
+              onChange();
+            } catch (e) {
+              push(String(e), "error");
+            } finally {
+              setApplying(false);
+              setRenamePlan(null);
+            }
+          }}
+        />
+      )}
+      <ToolbarBtn
+        label={aiBusy ? "Thinking…" : "✳️ AI rename"}
+        onClick={async () => {
+          setAiBusy(true);
+          try {
+            const plan = await api.aiSmartRename(binId);
+            if (plan.length === 0) push("Names already look consistent");
+            else setRenamePlan(plan);
+          } catch (e) {
+            push(String(e), "error");
+          } finally {
+            setAiBusy(false);
+          }
+        }}
+      />
       <ToolbarBtn
         label="📸 Snapshot"
         onClick={async () => {

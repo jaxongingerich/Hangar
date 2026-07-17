@@ -14,8 +14,16 @@ const VIEWS: { view: View; label: string }[] = [
 ];
 
 export function CommandPalette() {
-  const { paletteOpen, setPaletteOpen, setView, openProject, setNewProjectOpen, projectId, view } =
-    useUi();
+  const {
+    paletteOpen,
+    setPaletteOpen,
+    setView,
+    openProject,
+    setNewProjectOpen,
+    projectId,
+    view,
+    setAiResult,
+  } = useUi();
   const [query, setQuery] = useState("");
   const qc = useQueryClient();
   const { push } = useToasts();
@@ -127,6 +135,37 @@ export function CommandPalette() {
                   }}
                 >
                   ⟳ Rebuild index from disk
+                </Item>
+                {view === "project" && projectId !== null && (
+                  <Item
+                    onSelect={async () => {
+                      close();
+                      push("Summarizing…");
+                      try {
+                        const text = await api.aiSummarize(projectId);
+                        setAiResult({ title: "Catch me up", text });
+                      } catch (e) {
+                        push(String(e), "error");
+                      }
+                    }}
+                  >
+                    ✳️ Catch me up on this project
+                  </Item>
+                )}
+                <Item
+                  onSelect={async () => {
+                    close();
+                    push("Drafting digest…");
+                    try {
+                      const text = await api.aiWeeklyDigest();
+                      setAiResult({ title: "Weekly digest", text });
+                      qc.invalidateQueries({ queryKey: ["timeline"] });
+                    } catch (e) {
+                      push(String(e), "error");
+                    }
+                  }}
+                >
+                  ✳️ Weekly digest across projects
                 </Item>
               </Command.Group>
               <Command.Group

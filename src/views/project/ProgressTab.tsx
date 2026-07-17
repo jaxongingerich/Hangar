@@ -51,7 +51,15 @@ export function ProgressTab({ project }: { project: ProjectDetail }) {
   };
 
   const report = useMutation({
-    mutationFn: () => api.draftStatusReport(project.id),
+    // AI drafts the report when a provider is configured; the built-in
+    // template takes over otherwise.
+    mutationFn: async () => {
+      try {
+        return await api.aiStatusReport(project.id);
+      } catch {
+        return await api.draftStatusReport(project.id);
+      }
+    },
     onSuccess: (text) => {
       navigator.clipboard.writeText(text);
       push("Status report saved to Log and copied");
@@ -203,6 +211,30 @@ function MilestoneKanban({
             className="rounded-lg border border-line px-3.5 py-1.5 text-[12px] text-muted hover:border-solder hover:text-solder"
           >
             Software template
+          </button>
+          <button
+            onClick={async () => {
+              const desc = prompt(
+                "Describe the project in a sentence — AI drafts the milestones:",
+              );
+              if (!desc?.trim()) return;
+              try {
+                const titles = await api.aiAutoMilestones(project.id, desc.trim());
+                if (titles.length === 0) {
+                  push("AI returned no milestones", "error");
+                  return;
+                }
+                for (const t of titles) await api.addMilestone(project.id, t);
+                await api.setProgressMode(project.id, "milestones");
+                push(`${titles.length} milestones drafted`);
+                onChange();
+              } catch (e) {
+                push(String(e), "error");
+              }
+            }}
+            className="rounded-lg border border-line px-3.5 py-1.5 text-[12px] text-muted hover:border-solder hover:text-solder"
+          >
+            ✳️ AI milestones
           </button>
         </div>
       </div>

@@ -9,12 +9,14 @@ import { LogTab } from "./LogTab";
 import { ProgressTab } from "./ProgressTab";
 import { OrdersTab } from "./OrdersTab";
 import { LinksTab } from "./LinksTab";
+import { ChatDrawer } from "./ChatDrawer";
 
 const TABS = ["Files", "Progress", "Log", "Orders", "Links"] as const;
 type Tab = (typeof TABS)[number];
 
 export function ProjectView({ projectId }: { projectId: number }) {
   const [tab, setTab] = useState<Tab>("Files");
+  const [chatOpen, setChatOpen] = useState(false);
   const qc = useQueryClient();
   const { setView } = useUi();
   const { push } = useToasts();
@@ -90,6 +92,17 @@ export function ProjectView({ projectId }: { projectId: number }) {
         </button>
 
         <div className="ml-auto flex items-center gap-3">
+          <button
+            onClick={() => setChatOpen(!chatOpen)}
+            className={`rounded-md border px-2.5 py-1 text-[12px] transition-colors ${
+              chatOpen
+                ? "border-solder bg-solder/10 text-solder"
+                : "border-line text-muted hover:border-solder hover:text-solder"
+            }`}
+            title="AI project chat"
+          >
+            ✳️
+          </button>
           <HeaderMenu projectId={projectId} projectName={project.name} />
           <TimerButton projectId={projectId} />
           <input
@@ -130,11 +143,18 @@ export function ProjectView({ projectId }: { projectId: number }) {
         ))}
       </div>
 
-      {tab === "Files" && <FilesTab project={project} />}
-      {tab === "Progress" && <ProgressTab project={project} />}
-      {tab === "Log" && <LogTab projectId={projectId} />}
-      {tab === "Orders" && <OrdersTab projectId={projectId} />}
-      {tab === "Links" && <LinksTab projectId={projectId} />}
+      <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 flex-col overflow-hidden">
+          {tab === "Files" && <FilesTab project={project} />}
+          {tab === "Progress" && <ProgressTab project={project} />}
+          {tab === "Log" && <LogTab projectId={projectId} />}
+          {tab === "Orders" && <OrdersTab projectId={projectId} />}
+          {tab === "Links" && <LinksTab projectId={projectId} />}
+        </div>
+        {chatOpen && (
+          <ChatDrawer projectId={projectId} onClose={() => setChatOpen(false)} />
+        )}
+      </div>
     </div>
   );
 }

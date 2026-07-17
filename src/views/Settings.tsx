@@ -43,11 +43,148 @@ export function Settings({ root }: { root: string | null }) {
           </p>
         </section>
 
+        <AiSection />
         <RulesEditor />
         <WatchedFolders />
         <Backups />
       </div>
     </div>
+  );
+}
+
+function AiSection() {
+  const qc = useQueryClient();
+  const { push } = useToasts();
+  const { data: config } = useQuery({ queryKey: ["aiConfig"], queryFn: api.aiGetConfig });
+  const { data: usage } = useQuery({ queryKey: ["aiUsage"], queryFn: api.aiUsage });
+  const [key, setKey] = useState("");
+  const [testing, setTesting] = useState(false);
+
+  const setConfig = async (patch: Partial<{ provider: string; model: string; base_url: string }>) => {
+    if (!config) return;
+    await api.aiSetConfig(
+      patch.provider ?? config.provider,
+      patch.model ?? config.model,
+      patch.base_url ?? config.base_url,
+    );
+    qc.invalidateQueries({ queryKey: ["aiConfig"] });
+  };
+
+  const input =
+    "rounded-md border border-line bg-panel-2 px-2.5 py-1.5 text-[12px] placeholder:text-muted focus:border-solder focus:outline-none";
+
+  return (
+    <section className="mt-8">
+      <h2 className="mb-2 text-[14px] font-semibold">AI</h2>
+      <p className="mb-3 text-[12px] leading-relaxed text-muted">
+        Optional. Cloud Claude or a local model — filing, summaries,
+        milestones, renames. Every AI action is a plan you approve first, and
+        nothing ever leaves your machine without you hitting Apply.
+      </p>
+      <div className="flex flex-col gap-2 rounded-panel border border-line bg-panel p-4">
+        <div className="flex gap-2">
+          <select
+            value={config?.provider ?? "none"}
+            onChange={(e) => setConfig({ provider: e.target.value })}
+            className={input}
+          >
+            <option value="none">Off</option>
+            <option value="anthropic">Anthropic (Claude)</option>
+            <option value="ollama">Ollama (local)</option>
+            <option value="openai">OpenAI-compatible</option>
+          </select>
+          <input
+            className={`${input} w-52`}
+            placeholder={
+              config?.provider === "ollama" ? "llama3.2" : "claude-sonnet-4-6"
+            }
+            defaultValue={config?.model}
+            key={`model-${config?.model}`}
+            onBlur={(e) => setConfig({ model: e.target.value })}
+            title="Model (blur to save)"
+          />
+          {(config?.provider === "ollama" || config?.provider === "openai") && (
+            <input
+              className={`${input} flex-1`}
+              placeholder={
+                config?.provider === "ollama"
+                  ? "http://localhost:11434"
+                  : "https://…/v1"
+              }
+              defaultValue={config?.base_url}
+              key={`base-${config?.base_url}`}
+              onBlur={(e) => setConfig({ base_url: e.target.value })}
+              title="Base URL (blur to save)"
+            />
+          )}
+        </div>
+        {config?.provider === "anthropic" && (
+          <div className="flex gap-2">
+            <input
+              type="password"
+              className={`${input} flex-1`}
+              placeholder={config.has_key ? "API key saved in Keychain — paste to replace" : "sk-ant-…"}
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+            />
+            <button
+              onClick={async () => {
+                await api.aiSetKey(key);
+                setKey("");
+                push(key.trim() ? "Key saved to macOS Keychain" : "Key removed");
+                qc.invalidateQueries({ queryKey: ["aiConfig"] });
+              }}
+              className="rounded-md border border-line px-3 py-1.5 text-[12px] text-muted hover:border-solder hover:text-solder"
+            >
+              Save key
+            </button>
+          </div>
+        )}
+        {config?.provider === "ollama" && (
+          <button
+            onClick={async () => {
+              try {
+                const models = await api.aiOllamaModels();
+                push(models.length ? `Ollama models: ${models.join(", ")}` : "Ollama has no models pulled");
+              } catch (e) {
+                push(String(e), "error");
+              }
+            }}
+            className="self-start rounded-md border border-line px-3 py-1.5 text-[12px] text-muted hover:border-solder hover:text-solder"
+          >
+            List local models
+          </button>
+        )}
+        {config && config.provider !== "none" && (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={async () => {
+                setTesting(true);
+                try {
+                  const reply = await api.aiTest();
+                  push(`Connection OK — "${reply.trim()}"`);
+                } catch (e) {
+                  push(String(e), "error");
+                } finally {
+                  setTesting(false);
+                  qc.invalidateQueries({ queryKey: ["aiUsage"] });
+                }
+              }}
+              disabled={testing}
+              className="rounded-md bg-solder px-3 py-1.5 text-[12px] font-semibold text-ink disabled:opacity-50"
+            >
+              {testing ? "Testing…" : "Test connection"}
+            </button>
+            {usage && (
+              <span className="font-mono text-[11px] text-muted">
+                this month: {usage.month_runs} runs ·{" "}
+                {(usage.month_tokens_in + usage.month_tokens_out).toLocaleString()} tokens
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 
