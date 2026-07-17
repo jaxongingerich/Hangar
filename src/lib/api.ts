@@ -400,7 +400,71 @@ export const api = {
   undoLastOp: () => invoke<string | null>("undo_last_op"),
   exportOnePager: (projectId: number) =>
     invoke<string>("export_one_pager", { projectId }),
+
+  getFileNote: (fileId: number) =>
+    invoke<string | null>("get_file_note", { fileId }),
+  setFileNote: (fileId: number, body: string) =>
+    invoke<void>("set_file_note", { fileId, body }),
+  notedFileIds: (projectId: number) =>
+    invoke<number[]>("noted_file_ids", { projectId }),
+  saveClipboardFile: (
+    projectId: number,
+    binId: number | null,
+    kind: "png" | "txt",
+    dataBase64?: string,
+    text?: string,
+  ) =>
+    invoke<string>("save_clipboard_file", {
+      projectId,
+      binId,
+      kind,
+      dataBase64,
+      text,
+    }),
+  listCollections: () => invoke<CollectionRow[]>("list_collections"),
+  saveCollection: (name: string, query: string) =>
+    invoke<number>("save_collection", { name, query }),
+  deleteCollection: (id: number) => invoke<void>("delete_collection", { id }),
+  runCollection: (query: string) =>
+    invoke<BigFile[]>("run_collection", { query }),
+  getWatchedDirs: () => invoke<string[]>("get_watched_dirs"),
+  setWatchedDirs: (dirs: string[]) => invoke<void>("set_watched_dirs", { dirs }),
+  getSweepPatterns: () => invoke<string>("get_sweep_patterns"),
+  setSweepPatterns: (patterns: string) =>
+    invoke<void>("set_sweep_patterns", { patterns }),
+  getFinderTags: (path: string) => invoke<string[]>("get_finder_tags", { path }),
+  setFinderTags: (path: string, tags: string[]) =>
+    invoke<void>("set_finder_tags", { path, tags }),
+  backupStatus: () => invoke<BackupStatus>("backup_status"),
+  setBackupDir: (dir: string | null) => invoke<void>("set_backup_dir", { dir }),
+  runBackup: () => invoke<string>("run_backup"),
+  globalTimeline: (limit?: number) =>
+    invoke<TimelineRow[]>("global_timeline", { limit }),
 };
+
+export interface CollectionRow {
+  id: number;
+  name: string;
+  query: string;
+  icon: string | null;
+}
+
+export interface BackupStatus {
+  backup_dir: string | null;
+  keep: number;
+  last_backup: string | null;
+  backups: [string, number][];
+}
+
+export interface TimelineRow {
+  id: number;
+  project_id: number;
+  project_name: string;
+  project_emoji: string;
+  ts: string;
+  kind: string;
+  body_md: string;
+}
 
 export interface SpaceProject {
   id: number;

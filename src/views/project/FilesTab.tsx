@@ -33,6 +33,10 @@ export function FilesTab({ project }: { project: ProjectDetail }) {
     queryKey: ["snapshots", project.id],
     queryFn: () => api.listSnapshots(project.id),
   });
+  const { data: notedIds } = useQuery({
+    queryKey: ["noted", project.id],
+    queryFn: () => api.notedFileIds(project.id),
+  });
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["files", project.id] });
@@ -104,6 +108,45 @@ export function FilesTab({ project }: { project: ProjectDetail }) {
     }
     if (e.key === "Enter" && selectedRows.length === 1) {
       setRenaming(selectedRows[0].id);
+    }
+    // ⌘⇧V — paste clipboard (image or text) as a file into the current bin.
+    if (e.metaKey && e.shiftKey && e.key.toLowerCase() === "v") {
+      e.preventDefault();
+      pasteClipboard();
+    }
+  };
+
+  const pasteClipboard = async () => {
+    const binIdForPaste = scope.kind === "bin" ? scope.binId : null;
+    try {
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        if (item.types.includes("image/png")) {
+          const blob = await item.getType("image/png");
+          const buf = await blob.arrayBuffer();
+          let binary = "";
+          const bytes = new Uint8Array(buf);
+          for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+          const name = await api.saveClipboardFile(
+            project.id, binIdForPaste, "png", btoa(binary),
+          );
+          push(`Pasted → ${name}`);
+          invalidate();
+          return;
+        }
+      }
+      const text = await navigator.clipboard.readText();
+      if (text.trim()) {
+        const name = await api.saveClipboardFile(
+          project.id, binIdForPaste, "txt", undefined, text,
+        );
+        push(`Pasted → ${name}`);
+        invalidate();
+      } else {
+        push("Clipboard is empty", "error");
+      }
+    } catch (err) {
+      push(`Paste failed: ${err}`, "error");
     }
   };
 
@@ -190,6 +233,35 @@ export function FilesTab({ project }: { project: ProjectDetail }) {
                 onClick={() => setRenaming(selectedRows[0].id)}
                 disabled={selectedRows.length !== 1}
               />
+              {selectedRows.length === 1 && (
+                <>
+                  <ToolbarBtn
+                    label={notedIds?.includes(selectedRows[0].id) ? "Note ●" : "Note"}
+                    onClick={async () => {
+                      const existing = await api.getFileNote(selectedRows[0].id);
+                      const body = prompt("Note for this file (markdown):", existing ?? "");
+                      if (body === null) return;
+                      await api.setFileNote(selectedRows[0].id, body);
+                      qc.invalidateQueries({ queryKey: ["noted", project.id] });
+                      push(body.trim() ? "Note saved" : "Note removed");
+                    }}
+                  />
+                  <ToolbarBtn
+                    label="Tags"
+                    onClick={async () => {
+                      const current = await api.getFinderTags(selectedRows[0].abs_path);
+                      const input = prompt(
+                        "Finder tags (comma separated) — synced with macOS:",
+                        current.join(", "),
+                      );
+                      if (input === null) return;
+                      const tags = input.split(",").map((t) => t.trim()).filter(Boolean);
+                      await api.setFinderTags(selectedRows[0].abs_path, tags);
+                      push(tags.length ? `Tagged: ${tags.join(", ")}` : "Tags cleared");
+                    }}
+                  />
+                </>
+              )}
               <MoveMenu
                 bins={project.bins}
                 onMove={(dest) =>

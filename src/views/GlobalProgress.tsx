@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Line, LineChart, ResponsiveContainer, YAxis } from "recharts";
 import { api } from "../lib/api";
@@ -17,7 +18,13 @@ const HEALTH_LABEL: Record<string, string> = {
 
 export function GlobalProgress() {
   const { openProject } = useUi();
+  const [tab, setTab] = useState<"ranked" | "timeline">("ranked");
   const { data: rows } = useQuery({ queryKey: ["portfolio"], queryFn: api.portfolio });
+  const { data: timeline } = useQuery({
+    queryKey: ["timeline"],
+    queryFn: () => api.globalTimeline(200),
+    enabled: tab === "timeline",
+  });
 
   const avg =
     rows && rows.length > 0
@@ -31,6 +38,19 @@ export function GlobalProgress() {
       <div className="mx-auto max-w-[860px] px-6 pb-10 pt-5">
         <div className="mb-5 flex items-center gap-6">
           <h1 className="text-[20px] font-semibold">Progress</h1>
+          <div className="flex rounded-lg border border-line p-0.5">
+            {(["ranked", "timeline"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                  tab === t ? "bg-panel-2 text-text" : "text-muted hover:text-text"
+                }`}
+              >
+                {t === "ranked" ? "Ranked" : "Timeline"}
+              </button>
+            ))}
+          </div>
           <div className="ml-auto flex items-center gap-5 rounded-panel border border-line bg-panel px-5 py-2.5">
             <div className="flex items-center gap-2.5">
               <ProgressRing value={avg} color="#22D3A6" size={34} stroke={3} />
@@ -48,6 +68,31 @@ export function GlobalProgress() {
           </div>
         </div>
 
+        {tab === "timeline" ? (
+          <div className="overflow-hidden rounded-panel border border-line">
+            {(timeline ?? []).map((e) => (
+              <button
+                key={e.id}
+                onClick={() => openProject(e.project_id)}
+                className="flex w-full items-center gap-3 border-b border-line/50 bg-panel px-4 py-2 text-left transition-colors last:border-b-0 hover:bg-panel-2"
+              >
+                <span className="w-24 shrink-0 font-mono text-[10px] text-muted">
+                  {e.ts.slice(0, 16)}
+                </span>
+                <span>{e.project_emoji}</span>
+                <span className="w-32 shrink-0 truncate text-[11px] text-muted">
+                  {e.project_name}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-[12px]">{e.body_md}</span>
+              </button>
+            ))}
+            {(timeline ?? []).length === 0 && (
+              <p className="bg-panel px-4 py-6 text-center text-[12px] text-muted">
+                Everything you do, across every project, lands here.
+              </p>
+            )}
+          </div>
+        ) : (
         <div className="flex flex-col gap-2">
           {(rows ?? []).map((r) => (
             <button
@@ -99,6 +144,7 @@ export function GlobalProgress() {
             </p>
           )}
         </div>
+        )}
       </div>
     </div>
   );

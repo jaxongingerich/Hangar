@@ -30,13 +30,66 @@ export default function App() {
 
   // Disk is truth: when the watcher sees changes, refetch everything visible.
   useEffect(() => {
-    const unlisten = listen("fs-changed", () => {
+    const unlistenFs = listen("fs-changed", () => {
       qc.invalidateQueries();
     });
+    const unlistenSweep = listen<string>("swept", (e) => {
+      push(`Swept ${e.payload} → Inbox`);
+      qc.invalidateQueries({ queryKey: ["inbox"] });
+    });
     return () => {
-      unlisten.then((fn) => fn());
+      unlistenFs.then((fn) => fn());
+      unlistenSweep.then((fn) => fn());
     };
-  }, [qc]);
+  }, [qc, push]);
+
+  // Global hotkey: ⌘⇧H raises Hangar from anywhere.
+  useEffect(() => {
+    let cleanup = () => {};
+    (async () => {
+      try {
+        const { register, unregister } = await import("@tauri-apps/plugin-global-shortcut");
+        const { getCurrentWindow } = await import("@tauri-apps/api/window");
+        await register("CmdOrCtrl+Shift+H", async (event) => {
+          if (event.state === "Pressed") {
+            const win = getCurrentWindow();
+            await win.show();
+            await win.setFocus();
+          }
+        });
+        cleanup = () => {
+          unregister("CmdOrCtrl+Shift+H").catch(() => {});
+        };
+      } catch {
+        // Shortcut may already be registered by another instance.
+      }
+    })();
+    return () => cleanup();
+  }, []);
+
+  // One notification per session for overdue work.
+  useEffect(() => {
+    if (!root) return;
+    (async () => {
+      try {
+        const data = await api.todayData();
+        const overdue = data.overdue.length;
+        if (overdue === 0) return;
+        const { isPermissionGranted, requestPermission, sendNotification } =
+          await import("@tauri-apps/plugin-notification");
+        let granted = await isPermissionGranted();
+        if (!granted) granted = (await requestPermission()) === "granted";
+        if (granted) {
+          sendNotification({
+            title: "Hangar",
+            body: `${overdue} task${overdue === 1 ? "" : "s"} overdue — open Today to triage.`,
+          });
+        }
+      } catch {
+        // Notifications are best-effort.
+      }
+    })();
+  }, [root]);
 
   // Global shortcuts that aren't view-specific.
   useEffect(() => {

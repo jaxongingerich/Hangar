@@ -5,7 +5,7 @@ import { api } from "../lib/api";
 import { formatAgo, formatBytes } from "../lib/format";
 import { useToasts, useUi } from "../lib/store";
 
-type Section = "usage" | "duplicates" | "archives" | "parts";
+type Section = "usage" | "duplicates" | "archives" | "parts" | "collections";
 
 export function Space() {
   const [section, setSection] = useState<Section>("usage");
@@ -20,6 +20,7 @@ export function Space() {
               ["duplicates", "Duplicates"],
               ["archives", "Archives"],
               ["parts", "Parts library"],
+              ["collections", "Collections"],
             ] as [Section, string][]
           ).map(([s, label]) => (
             <button
@@ -38,6 +39,111 @@ export function Space() {
       {section === "duplicates" && <Duplicates />}
       {section === "archives" && <Archives />}
       {section === "parts" && <Parts />}
+      {section === "collections" && <Collections />}
+    </div>
+  );
+}
+
+function Collections() {
+  const [query, setQuery] = useState("");
+  const [active, setActive] = useState<string | null>(null);
+  const qc = useQueryClient();
+  const { push } = useToasts();
+
+  const { data: saved } = useQuery({
+    queryKey: ["collections"],
+    queryFn: api.listCollections,
+  });
+  const effective = active ?? query;
+  const { data: results } = useQuery({
+    queryKey: ["collection-run", effective],
+    queryFn: () => api.runCollection(effective),
+    enabled: effective.trim().length > 0,
+  });
+
+  return (
+    <div className="flex-1 overflow-y-auto px-6 pb-10">
+      <div className="mb-3 flex gap-2">
+        <input
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setActive(null);
+          }}
+          placeholder='Live query — "ext:step", ">10mb", "touched:7d", or plain text'
+          className="w-96 rounded-md border border-line bg-panel-2 px-3 py-1.5 font-mono text-[12px] placeholder:text-muted focus:border-solder focus:outline-none"
+        />
+        <button
+          onClick={async () => {
+            const name = prompt("Collection name:");
+            if (!name?.trim() || !query.trim()) return;
+            await api.saveCollection(name.trim(), query.trim());
+            push(`Saved "${name.trim()}"`);
+            qc.invalidateQueries({ queryKey: ["collections"] });
+          }}
+          disabled={!query.trim()}
+          className="rounded-md bg-solder px-3 py-1.5 text-[12px] font-semibold text-ink disabled:opacity-40"
+        >
+          Save as collection
+        </button>
+      </div>
+
+      {(saved ?? []).length > 0 && (
+        <div className="mb-4 flex flex-wrap gap-1.5">
+          {(saved ?? []).map((c) => (
+            <span
+              key={c.id}
+              className={`group flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] ${
+                active === c.query
+                  ? "border-solder text-solder"
+                  : "border-line text-muted hover:border-solder hover:text-solder"
+              }`}
+            >
+              <button onClick={() => setActive(active === c.query ? null : c.query)}>
+                {c.name}
+              </button>
+              <button
+                onClick={async () => {
+                  await api.deleteCollection(c.id);
+                  qc.invalidateQueries({ queryKey: ["collections"] });
+                }}
+                className="hidden text-muted hover:text-st-late group-hover:inline"
+              >
+                ✕
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {effective.trim() && (
+        <div className="overflow-hidden rounded-panel border border-line">
+          {(results ?? []).length === 0 ? (
+            <p className="bg-panel px-4 py-4 text-center text-[12px] text-muted">
+              No matches.
+            </p>
+          ) : (
+            (results ?? []).map((f) => (
+              <div
+                key={f.id}
+                className="flex items-center gap-3 border-b border-line/50 bg-panel px-4 py-2 last:border-b-0"
+              >
+                <span className="min-w-0 flex-1 truncate text-[12px]">{f.name}</span>
+                <span className="text-[11px] text-muted">{f.project_name}</span>
+                <span className="w-20 text-right font-mono text-[11px] text-muted">
+                  {formatBytes(f.size)}
+                </span>
+                <button
+                  onClick={() => revealItemInDir(f.abs_path)}
+                  className="text-[11px] text-muted hover:text-solder"
+                >
+                  reveal
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }

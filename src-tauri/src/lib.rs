@@ -2,6 +2,7 @@ mod commands;
 mod commands_m1;
 pub mod commands_m2;
 pub mod commands_m3;
+pub mod commands_m4;
 pub mod db;
 pub mod error;
 pub mod ops;
@@ -33,6 +34,40 @@ pub fn restart_watcher(app: &tauri::AppHandle, root: PathBuf) {
     }
 }
 
+/// (Re)start sweepers for every watched external folder.
+pub fn restart_sweepers(app: &tauri::AppHandle) {
+    let state = app.state::<AppState>();
+    let (dirs, patterns, root) = {
+        let conn = state.conn.lock().unwrap();
+        let dirs: Vec<String> = db::get_setting(&conn, "watched_dirs")
+            .ok()
+            .flatten()
+            .and_then(|v| serde_json::from_str(&v).ok())
+            .unwrap_or_default();
+        let patterns = db::get_setting(&conn, "sweep_patterns")
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| "*.zip,*.pdf,*.step,*.gbr,*.csv".into());
+        let root = db::get_setting(&conn, "root").ok().flatten();
+        (dirs, patterns, root)
+    };
+    let Some(root) = root else { return };
+    let inbox = PathBuf::from(root).join(scan::INBOX_DIR);
+    let handles = app.state::<watch::SweeperHandles>();
+    let mut sweepers = handles.0.lock().unwrap();
+    sweepers.clear();
+    for dir in dirs {
+        let path = PathBuf::from(&dir);
+        if !path.is_dir() {
+            continue;
+        }
+        match watch::start_sweeper(app.clone(), path, inbox.clone(), patterns.clone()) {
+            Ok(w) => sweepers.push(w),
+            Err(e) => tracing::warn!("could not sweep {dir}: {e}"),
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tracing_subscriber::fmt()
@@ -42,6 +77,8 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             let db_path = data_dir.join("hangar.db");
@@ -53,10 +90,12 @@ pub fn run() {
                 db_path,
             });
             app.manage(watch::WatcherHandle(Mutex::new(None)));
+            app.manage(watch::SweeperHandles(Mutex::new(Vec::new())));
             if std::env::var("HANGAR_NO_WATCH").is_err() {
                 if let Some(root) = root {
                     restart_watcher(app.handle(), PathBuf::from(root));
                 }
+                restart_sweepers(app.handle());
             }
             Ok(())
         })
@@ -136,6 +175,24 @@ pub fn run() {
             commands_m3::use_component,
             commands_m3::undo_last_op,
             commands_m3::export_one_pager,
+            commands_m4::get_file_note,
+            commands_m4::set_file_note,
+            commands_m4::noted_file_ids,
+            commands_m4::save_clipboard_file,
+            commands_m4::list_collections,
+            commands_m4::save_collection,
+            commands_m4::delete_collection,
+            commands_m4::run_collection,
+            commands_m4::get_watched_dirs,
+            commands_m4::set_watched_dirs,
+            commands_m4::get_sweep_patterns,
+            commands_m4::set_sweep_patterns,
+            commands_m4::get_finder_tags,
+            commands_m4::set_finder_tags,
+            commands_m4::backup_status,
+            commands_m4::set_backup_dir,
+            commands_m4::run_backup,
+            commands_m4::global_timeline,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

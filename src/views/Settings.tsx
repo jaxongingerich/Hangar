@@ -44,8 +44,146 @@ export function Settings({ root }: { root: string | null }) {
         </section>
 
         <RulesEditor />
+        <WatchedFolders />
+        <Backups />
       </div>
     </div>
+  );
+}
+
+function WatchedFolders() {
+  const qc = useQueryClient();
+  const { push } = useToasts();
+  const { data: dirs } = useQuery({
+    queryKey: ["watchedDirs"],
+    queryFn: api.getWatchedDirs,
+  });
+  const { data: patterns } = useQuery({
+    queryKey: ["sweepPatterns"],
+    queryFn: api.getSweepPatterns,
+  });
+
+  const addDir = async () => {
+    const dir = await open({ directory: true, title: "Watch a folder" });
+    if (typeof dir !== "string") return;
+    await api.setWatchedDirs([...(dirs ?? []), dir]);
+    push("Watching folder — matching files sweep to Inbox");
+    qc.invalidateQueries({ queryKey: ["watchedDirs"] });
+  };
+
+  return (
+    <section className="mt-8">
+      <h2 className="mb-2 text-[14px] font-semibold">Watched folders</h2>
+      <p className="mb-3 text-[12px] leading-relaxed text-muted">
+        New files matching the sweep patterns in these folders (Downloads,
+        say) move straight into <span className="font-mono">_Inbox</span>.
+      </p>
+      <div className="mb-2 overflow-hidden rounded-panel border border-line">
+        {(dirs ?? []).length === 0 ? (
+          <p className="bg-panel px-4 py-3 text-[12px] text-muted">
+            No watched folders yet.
+          </p>
+        ) : (
+          (dirs ?? []).map((d) => (
+            <div
+              key={d}
+              className="flex items-center gap-3 border-b border-line/50 bg-panel px-4 py-2.5 last:border-b-0"
+            >
+              <span className="flex-1 truncate font-mono text-[12px]">
+                {d.replace(/^\/Users\/[^/]+/, "~")}
+              </span>
+              <button
+                onClick={async () => {
+                  await api.setWatchedDirs((dirs ?? []).filter((x) => x !== d));
+                  qc.invalidateQueries({ queryKey: ["watchedDirs"] });
+                }}
+                className="text-[11px] text-muted hover:text-st-late"
+              >
+                Remove
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+      <div className="flex gap-2">
+        <button
+          onClick={addDir}
+          className="rounded-md border border-line px-3 py-1.5 text-[12px] text-muted hover:border-solder hover:text-solder"
+        >
+          Watch a folder…
+        </button>
+        <input
+          defaultValue={patterns}
+          key={patterns}
+          onBlur={async (e) => {
+            await api.setSweepPatterns(e.target.value);
+            push("Sweep patterns updated");
+          }}
+          placeholder="*.zip,*.pdf,*.step"
+          className="flex-1 rounded-md border border-line bg-panel-2 px-3 py-1.5 font-mono text-[12px] placeholder:text-muted focus:border-solder focus:outline-none"
+          title="Sweep patterns (blur to save)"
+        />
+      </div>
+    </section>
+  );
+}
+
+function Backups() {
+  const qc = useQueryClient();
+  const { push } = useToasts();
+  const { data: status } = useQuery({
+    queryKey: ["backup"],
+    queryFn: api.backupStatus,
+  });
+  const backup = useMutation({
+    mutationFn: api.runBackup,
+    onSuccess: (path) => {
+      push(`Backup verified → ${path.split("/").pop()}`);
+      qc.invalidateQueries({ queryKey: ["backup"] });
+    },
+    onError: (e) => push(String(e), "error"),
+  });
+
+  return (
+    <section className="mt-8">
+      <h2 className="mb-2 text-[14px] font-semibold">Backups</h2>
+      <p className="mb-3 text-[12px] leading-relaxed text-muted">
+        Zips the whole root to a destination of your choice (an external SSD,
+        ideally), verifies the archive, and keeps the last {status?.keep ?? 5}.
+      </p>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={async () => {
+            const dir = await open({ directory: true, title: "Backup destination" });
+            if (typeof dir !== "string") return;
+            await api.setBackupDir(dir);
+            qc.invalidateQueries({ queryKey: ["backup"] });
+          }}
+          className="rounded-md border border-line px-3 py-1.5 text-[12px] text-muted hover:border-solder hover:text-solder"
+        >
+          {status?.backup_dir
+            ? status.backup_dir.replace(/^\/Users\/[^/]+/, "~")
+            : "Choose destination…"}
+        </button>
+        <button
+          onClick={() => backup.mutate()}
+          disabled={!status?.backup_dir || backup.isPending}
+          className="rounded-md bg-solder px-3 py-1.5 text-[12px] font-semibold text-ink disabled:opacity-40"
+        >
+          {backup.isPending ? "Backing up…" : "Back up now"}
+        </button>
+        {status?.last_backup && (
+          <span className="font-mono text-[11px] text-muted">
+            last: {status.last_backup.slice(0, 16)}
+          </span>
+        )}
+      </div>
+      {(status?.backups.length ?? 0) > 0 && (
+        <div className="mt-2 font-mono text-[11px] text-muted">
+          {status!.backups.map(([name]) => name).join(" · ")}
+        </div>
+      )}
+    </section>
   );
 }
 

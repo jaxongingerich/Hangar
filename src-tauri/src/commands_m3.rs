@@ -204,7 +204,7 @@ pub fn find_duplicates(state: State<AppState>) -> AppResult<Vec<DupeGroup>> {
 
 // ---------- Archive & restore ----------
 
-fn zip_dir(src: &Path, zip_path: &Path, strip_prefix: &Path) -> AppResult<()> {
+pub fn zip_dir(src: &Path, zip_path: &Path, strip_prefix: &Path) -> AppResult<()> {
     let file = std::fs::File::create(zip_path)?;
     let mut zip = zip::ZipWriter::new(file);
     let options: zip::write::SimpleFileOptions = zip::write::SimpleFileOptions::default()
