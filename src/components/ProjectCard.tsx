@@ -5,7 +5,13 @@ import { ProgressRing } from "./ProgressRing";
 import { Spine } from "./Spine";
 import { StatusChip } from "./StatusChip";
 
-export function ProjectCard({ project }: { project: Card }) {
+export function ProjectCard({
+  project,
+  onClick,
+}: {
+  project: Card;
+  onClick?: () => void;
+}) {
   const ringColor = STATUS_COLORS[project.status] ?? "var(--color-solder)";
   return (
     <motion.button
@@ -13,6 +19,7 @@ export function ProjectCard({ project }: { project: Card }) {
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.15, ease: "easeOut" }}
+      onClick={onClick}
       className="group flex w-full items-stretch gap-3 rounded-panel border border-line bg-panel p-4 text-left transition-colors hover:border-[#2E3A4E]"
     >
       <div className="flex min-w-0 flex-1 flex-col gap-3">

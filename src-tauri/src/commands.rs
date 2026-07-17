@@ -43,12 +43,20 @@ pub fn default_root() -> String {
 }
 
 #[tauri::command]
-pub fn set_root(state: State<AppState>, path: String) -> AppResult<ScanStats> {
+pub fn set_root(
+    app: tauri::AppHandle,
+    state: State<AppState>,
+    path: String,
+) -> AppResult<ScanStats> {
     let root = PathBuf::from(&path);
     std::fs::create_dir_all(&root)?;
-    let mut conn = state.conn.lock().unwrap();
-    db::set_setting(&conn, "root", &path)?;
-    scan::scan(&mut conn, &root)
+    let stats = {
+        let mut conn = state.conn.lock().unwrap();
+        db::set_setting(&conn, "root", &path)?;
+        scan::scan(&mut conn, &root)?
+    };
+    crate::restart_watcher(&app, root);
+    Ok(stats)
 }
 
 #[tauri::command]

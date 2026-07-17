@@ -1,6 +1,8 @@
 import { useUi, View } from "../lib/store";
 
-const ICONS: Record<View, { label: string; path: string }> = {
+type RailView = Exclude<View, "project">;
+
+const ICONS: Record<RailView, { label: string; path: string }> = {
   dashboard: {
     label: "Dashboard",
     path: "M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z",
@@ -27,7 +29,7 @@ const ICONS: Record<View, { label: string; path: string }> = {
   },
 };
 
-const ORDER: View[] = ["dashboard", "today", "inbox", "progress", "space", "settings"];
+const ORDER: RailView[] = ["dashboard", "today", "inbox", "progress", "space", "settings"];
 
 export function IconRail() {
   const { view, setView } = useUi();

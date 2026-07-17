@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ProjectCard as Card } from "../lib/api";
-import { SortMode, useUi } from "../lib/store";
+import { SortMode, useToasts, useUi } from "../lib/store";
 import { ProjectCard } from "../components/ProjectCard";
 
 const SORTS: { id: SortMode; label: string }[] = [
@@ -29,7 +30,7 @@ function sortCards(cards: Card[], mode: SortMode): Card[] {
 }
 
 export function Dashboard() {
-  const { sort, setSort, setNewProjectOpen } = useUi();
+  const { sort, setSort, setNewProjectOpen, openProject } = useUi();
   const { data: projects, isLoading } = useQuery({
     queryKey: ["projects"],
     queryFn: api.listProjects,
@@ -97,10 +98,91 @@ export function Dashboard() {
         ) : (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">
             {cards.map((p) => (
-              <ProjectCard key={p.id} project={p} />
+              <ProjectCard
+                key={p.id}
+                project={p}
+                onClick={() => openProject(p.id)}
+              />
             ))}
           </div>
         )}
+        <IdeaBacklog />
+      </div>
+    </div>
+  );
+}
+
+function IdeaBacklog() {
+  const [draft, setDraft] = useState("");
+  const qc = useQueryClient();
+  const { push } = useToasts();
+  const { data: ideas } = useQuery({ queryKey: ["ideas"], queryFn: api.listIdeas });
+
+  const create = useMutation({
+    mutationFn: () => api.createIdea(draft.trim()),
+    onSuccess: () => {
+      setDraft("");
+      qc.invalidateQueries({ queryKey: ["ideas"] });
+    },
+  });
+
+  const promote = useMutation({
+    mutationFn: async (idea: { id: number; name: string }) => {
+      await api.createProject(idea.name, "hardware");
+      await api.deleteIdea(idea.id);
+    },
+    onSuccess: () => {
+      push("Idea promoted to a project");
+      qc.invalidateQueries();
+    },
+    onError: (e) => push(String(e), "error"),
+  });
+
+  const remove = useMutation({
+    mutationFn: (id: number) => api.deleteIdea(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["ideas"] }),
+  });
+
+  return (
+    <div className="mt-8">
+      <div className="mb-2 flex items-baseline gap-2">
+        <h2 className="text-[14px] font-semibold">Idea backlog</h2>
+        <span className="font-mono text-[11px] text-muted">
+          {ideas?.length ?? 0}
+        </span>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && draft.trim()) create.mutate();
+          }}
+          placeholder="Capture an idea — no folder until you promote it"
+          className="w-full max-w-[480px] rounded-lg border border-line bg-panel px-3 py-2 text-[12.5px] placeholder:text-muted focus:border-solder focus:outline-none"
+        />
+        {(ideas ?? []).map((idea) => (
+          <div
+            key={idea.id}
+            className="flex max-w-[480px] items-center gap-2 rounded-lg border border-line/60 bg-panel px-3 py-2"
+          >
+            <span className="text-st-idea">◌</span>
+            <span className="flex-1 truncate text-[12.5px]">{idea.name}</span>
+            <button
+              onClick={() => promote.mutate(idea)}
+              className="rounded-md border border-line px-2 py-0.5 text-[11px] text-muted transition-colors hover:border-solder hover:text-solder"
+            >
+              Promote
+            </button>
+            <button
+              onClick={() => remove.mutate(idea.id)}
+              className="rounded-md px-1.5 py-0.5 text-[11px] text-muted hover:text-st-late"
+              title="Delete idea"
+            >
+              ✕
+            </button>
+          </div>
+        ))}
       </div>
     </div>
   );

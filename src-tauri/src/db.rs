@@ -19,6 +19,10 @@ fn migrate(conn: &Connection) -> AppResult<()> {
         conn.execute_batch(SCHEMA_V1)?;
         conn.pragma_update(None, "user_version", 1)?;
     }
+    if version < 2 {
+        conn.execute_batch(SCHEMA_V2)?;
+        conn.pragma_update(None, "user_version", 2)?;
+    }
     Ok(())
 }
 
@@ -254,6 +258,15 @@ END;
 CREATE TRIGGER IF NOT EXISTS logs_ad AFTER DELETE ON logs BEGIN
   INSERT INTO logs_fts(logs_fts, rowid, body_md) VALUES ('delete', old.id, old.body_md);
 END;
+"#;
+
+const SCHEMA_V2: &str = r#"
+CREATE TABLE IF NOT EXISTS ideas (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  note TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 "#;
 
 pub fn get_setting(conn: &Connection, key: &str) -> AppResult<Option<String>> {
