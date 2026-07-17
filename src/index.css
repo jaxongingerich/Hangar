@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #0b0e14;
+  --color-panel: #131822;
+  --color-panel-2: #1a2130;
+  --color-line: #232c3b;
+  --color-text: #e6ebf2;
+  --color-muted: #8a97ac;
+  --color-solder: #22d3a6;
+  --color-st-idea: #7c8aa5;
+  --color-st-active: #22d3a6;
+  --color-st-risk: #f5a524;
+  --color-st-late: #f5556d;
+  --color-st-shipped: #8b5cf6;
+
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+
+  --radius-panel: 10px;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--color-ink);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  cursor: default;
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.02em;
+}
+
+/* Quiet scrollbars */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-line);
+  border-radius: 5px;
+  border: 2px solid var(--color-ink);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-solder);
+  outline-offset: 1px;
+  border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
