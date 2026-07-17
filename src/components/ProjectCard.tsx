@@ -20,13 +20,13 @@ export function ProjectCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.15, ease: "easeOut" }}
       onClick={onClick}
-      className="group flex w-full items-stretch gap-3 rounded-panel border border-line bg-panel p-4 text-left transition-colors hover:border-[#2E3A4E]"
+      className="group flex w-full items-stretch gap-3 rounded-panel border border-line bg-panel p-4 text-left transition-colors hover:border-line-strong"
     >
       <div className="flex min-w-0 flex-1 flex-col gap-3">
         <div className="flex items-center gap-2.5">
           <span
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[16px]"
-            style={{ background: `${project.color}1F` }}
+            style={{ background: `color-mix(in srgb, ${project.color} 14%, transparent)` }}
           >
             {project.emoji}
           </span>

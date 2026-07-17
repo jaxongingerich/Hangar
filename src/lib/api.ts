@@ -460,6 +460,13 @@ export const api = {
     invoke<RenamePlanItem[]>("ai_smart_rename", { binId }),
   aiProjectChat: (projectId: number, messages: { role: string; content: string }[]) =>
     invoke<string>("ai_project_chat", { projectId, messages }),
+
+  importFiles: (paths: string[], projectId?: number | null, binId?: number | null) =>
+    invoke<number>("import_files", { paths, projectId, binId }),
+  readBinGerbers: (binId: number) =>
+    invoke<{ filename: string; content: string }[]>("read_bin_gerbers", { binId }),
+  mcpInfo: () =>
+    invoke<{ url: string; token: string; install_cmd: string }>("mcp_info"),
 };
 
 export interface AiConfig {

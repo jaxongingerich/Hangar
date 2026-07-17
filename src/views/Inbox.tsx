@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, InboxPlanItem } from "../lib/api";
 import { formatAgo, formatBytes } from "../lib/format";
-import { fileIcon } from "../lib/icons";
+import { FileTypeIcon, Icon } from "../lib/icons";
 import { useToasts } from "../lib/store";
 import { PlanSheet } from "../components/PlanSheet";
 
@@ -85,6 +85,20 @@ export function Inbox() {
             ))}
           </select>
           <button
+            onClick={async () => {
+              const { open } = await import("@tauri-apps/plugin-dialog");
+              const picked = await open({ multiple: true, title: "Import files to Inbox" });
+              if (!picked) return;
+              const paths = Array.isArray(picked) ? picked : [picked];
+              const n = await api.importFiles(paths, null, null);
+              push(`Imported ${n} file${n === 1 ? "" : "s"} → Inbox`);
+              qc.invalidateQueries({ queryKey: ["inbox"] });
+            }}
+            className="rounded-lg border border-line px-3.5 py-1.5 text-[12px] font-medium text-muted transition-colors hover:border-solder hover:text-solder"
+          >
+            Import files…
+          </button>
+          <button
             onClick={fileAll}
             disabled={!items || items.length === 0 || file.isPending}
             className="rounded-lg bg-solder px-3.5 py-1.5 text-[12px] font-semibold text-ink transition-opacity hover:opacity-90 disabled:opacity-40"
@@ -110,7 +124,7 @@ export function Inbox() {
             disabled={!items || items.length === 0 || aiBusy}
             className="rounded-lg border border-line px-3.5 py-1.5 text-[12px] font-medium text-muted transition-colors hover:border-solder hover:text-solder disabled:opacity-40"
           >
-            {aiBusy ? "Thinking…" : "✳️ Organize with AI"}
+            {aiBusy ? "Thinking…" : "Organize with AI"}
           </button>
         </div>
       </div>
@@ -143,7 +157,7 @@ export function Inbox() {
       <div className="flex-1 overflow-y-auto px-6 pb-6">
         {!items || items.length === 0 ? (
           <div className="mx-auto mt-16 max-w-[380px] text-center">
-            <div className="mb-2 text-[28px]">📥</div>
+            <div className="mb-3 flex justify-center text-muted"><Icon glyph="inbox" size={28} /></div>
             <div className="mb-1 text-[16px] font-semibold">Inbox zero</div>
             <p className="leading-relaxed text-muted">
               Drop files into the <span className="font-mono">_Inbox</span>{" "}
@@ -159,8 +173,8 @@ export function Inbox() {
                 key={item.path}
                 className="flex items-center gap-3 border-b border-line/50 bg-panel px-4 py-2.5 last:border-b-0"
               >
-                <span className="text-[14px]">
-                  {fileIcon(item.name.split(".").pop() ?? null)}
+                <span className="flex w-5 justify-center text-muted">
+                  <FileTypeIcon ext={item.name.split(".").pop() ?? null} />
                 </span>
                 <span className="min-w-0 flex-1 truncate text-[12.5px]">
                   {item.name}

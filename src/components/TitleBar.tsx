@@ -4,7 +4,7 @@ import { useUi } from "../lib/store";
 
 export function TitleBar({ root }: { root: string | null }) {
   const qc = useQueryClient();
-  const { openProject } = useUi();
+  const { openProject, setPaletteOpen } = useUi();
   const rescan = useMutation({
     mutationFn: api.rescan,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["projects"] }),
@@ -31,7 +31,21 @@ export function TitleBar({ root }: { root: string | null }) {
           {root.replace(/^\/Users\/[^/]+/, "~")}
         </span>
       )}
-      <div className="ml-auto flex items-center gap-1">
+      <div className="ml-auto flex items-center gap-1.5">
+        {root && (
+          <button
+            onClick={() => setPaletteOpen(true)}
+            className="flex w-48 items-center gap-2 rounded-lg border border-line bg-panel px-3 py-1.5 text-left text-[12px] text-muted transition-colors hover:border-line-strong"
+            title="Search everything"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+            <span className="flex-1">Search</span>
+            <span className="font-mono text-[10px]">⌘K</span>
+          </button>
+        )}
         {timer && (
           <button
             onClick={() => openProject(timer.project_id)}

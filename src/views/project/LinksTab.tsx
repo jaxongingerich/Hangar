@@ -2,15 +2,16 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { api } from "../../lib/api";
+import { Icon } from "../../lib/icons";
 
 const KINDS = ["repo", "store", "order", "datasheet", "doc", "other"] as const;
-const KIND_ICON: Record<string, string> = {
-  repo: "⌥",
-  store: "🛍",
-  order: "📦",
-  datasheet: "📕",
-  doc: "📄",
-  other: "🔗",
+const KIND_GLYPH: Record<string, string> = {
+  repo: "code",
+  store: "export",
+  order: "archive",
+  datasheet: "book",
+  doc: "text",
+  other: "file",
 };
 
 export function LinksTab({ projectId }: { projectId: number }) {
@@ -46,7 +47,7 @@ export function LinksTab({ projectId }: { projectId: number }) {
       <div className="mx-auto max-w-[720px] px-6 py-5">
         {badge && (
           <div className="mb-4 flex items-center gap-2 rounded-panel border border-line bg-panel px-4 py-2.5">
-            <span className="font-mono text-[12px] text-solder"> {badge.branch}</span>
+            <span className="font-mono text-[12px] text-solder">{badge.branch}</span>
             <span
               className={`rounded-full px-2 py-0.5 font-mono text-[10px] ${
                 badge.dirty ? "bg-st-risk/15 text-st-risk" : "bg-solder/15 text-solder"
@@ -100,7 +101,7 @@ export function LinksTab({ projectId }: { projectId: number }) {
                 key={l.id}
                 className="group flex items-center gap-3 border-b border-line/50 bg-panel px-4 py-2.5 last:border-b-0"
               >
-                <span className="w-5 text-center text-[13px]">{KIND_ICON[l.kind]}</span>
+                <span className="flex w-5 justify-center text-muted"><Icon glyph={KIND_GLYPH[l.kind] ?? "file"} /></span>
                 <button
                   onClick={() => openUrl(l.url)}
                   className="min-w-0 flex-1 truncate text-left text-[12.5px] hover:text-solder"

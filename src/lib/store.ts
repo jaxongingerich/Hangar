@@ -1,5 +1,35 @@
 import { create } from "zustand";
 
+export type Theme = "system" | "light" | "dark";
+
+interface ThemeState {
+  theme: Theme;
+  setTheme: (t: Theme) => void;
+}
+
+export const useTheme = create<ThemeState>((set) => ({
+  theme: (localStorage.getItem("hangar-theme") as Theme) || "system",
+  setTheme: (theme) => {
+    localStorage.setItem("hangar-theme", theme);
+    set({ theme });
+    applyTheme(theme);
+  },
+}));
+
+export function applyTheme(theme: Theme) {
+  const dark =
+    theme === "dark" ||
+    (theme === "system" &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches);
+  document.documentElement.classList.toggle("dark", dark);
+}
+
+// Apply on load and track OS changes while in system mode.
+applyTheme(useTheme.getState().theme);
+window
+  .matchMedia("(prefers-color-scheme: dark)")
+  .addEventListener("change", () => applyTheme(useTheme.getState().theme));
+
 export type View =
   | "dashboard"
   | "today"
@@ -24,6 +54,9 @@ interface UiState {
   setPaletteOpen: (open: boolean) => void;
   aiResult: { title: string; text: string } | null;
   setAiResult: (r: { title: string; text: string } | null) => void;
+  /** Bin currently open in the project Files tab — drop target for imports. */
+  activeBinId: number | null;
+  setActiveBinId: (id: number | null) => void;
 }
 
 export const useUi = create<UiState>((set) => ({
@@ -39,6 +72,8 @@ export const useUi = create<UiState>((set) => ({
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
   aiResult: null,
   setAiResult: (aiResult) => set({ aiResult }),
+  activeBinId: null,
+  setActiveBinId: (activeBinId) => set({ activeBinId }),
 }));
 
 // Lightweight toast bus.

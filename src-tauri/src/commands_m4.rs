@@ -426,6 +426,119 @@ pub fn run_backup(state: State<AppState>) -> AppResult<String> {
     Ok(out.to_string_lossy().to_string())
 }
 
+// ---------- Universal import ----------
+
+/// Copy (never move) arbitrary files from anywhere on disk into a project
+/// bin — or `_Inbox` when no project is given. Root-guarded destinations,
+/// name-deduped, journaled.
+#[tauri::command]
+pub fn import_files(
+    state: State<AppState>,
+    paths: Vec<String>,
+    project_id: Option<i64>,
+    bin_id: Option<i64>,
+) -> AppResult<usize> {
+    let mut conn = state.conn.lock().unwrap();
+    let root = root_of(&conn)?;
+    let dest_dir = match project_id {
+        Some(pid) => {
+            let proj = ops::project_path(&conn, pid)?;
+            match bin_id {
+                Some(bid) => {
+                    let rel: String = conn.query_row(
+                        "SELECT rel_path FROM bins WHERE id = ?1 AND project_id = ?2",
+                        rusqlite::params![bid, pid],
+                        |r| r.get(0),
+                    )?;
+                    proj.join(rel)
+                }
+                None => proj,
+            }
+        }
+        None => root.join(scan::INBOX_DIR),
+    };
+    ops::assert_under_root(&root, &dest_dir)?;
+    std::fs::create_dir_all(&dest_dir)?;
+
+    let mut imported = 0usize;
+    for p in &paths {
+        let src = PathBuf::from(p);
+        if !src.is_file() {
+            continue;
+        }
+        let Some(name) = src.file_name().map(|n| n.to_string_lossy().to_string()) else {
+            continue;
+        };
+        let final_name = ops::dedupe_name(&dest_dir, &name);
+        std::fs::copy(&src, dest_dir.join(&final_name))?;
+        imported += 1;
+    }
+    if imported > 0 {
+        if let Some(pid) = project_id {
+            ops::auto_log(&conn, pid, &format!("imported {imported} file(s)"))?;
+        }
+        ops::journal(
+            &conn,
+            "import",
+            &format!("Import {imported} file(s) → {}", dest_dir.display()),
+            None,
+        )?;
+        scan::scan(&mut conn, &root)?;
+    }
+    Ok(imported)
+}
+
+// ---------- Gerber preview support ----------
+
+#[derive(Serialize)]
+pub struct GerberFile {
+    pub filename: String,
+    pub content: String,
+}
+
+/// Read gerber/drill text files from a bin for in-webview board rendering.
+#[tauri::command]
+pub fn read_bin_gerbers(state: State<AppState>, bin_id: i64) -> AppResult<Vec<GerberFile>> {
+    const MAX_FILE: u64 = 8 * 1024 * 1024;
+    const GERBER_EXTS: &[&str] = &[
+        "gbr", "gtl", "gbl", "gto", "gbo", "gts", "gbs", "gko", "gm1", "drl", "xln", "txt",
+    ];
+    let conn = state.conn.lock().unwrap();
+    let root = root_of(&conn)?;
+    let (project_id, rel_path): (i64, String) = conn.query_row(
+        "SELECT project_id, rel_path FROM bins WHERE id = ?1",
+        [bin_id],
+        |r| Ok((r.get(0)?, r.get(1)?)),
+    )?;
+    let dir = ops::project_path(&conn, project_id)?.join(rel_path);
+    ops::assert_under_root(&root, &dir)?;
+    let mut out = vec![];
+    for entry in std::fs::read_dir(&dir)?.flatten() {
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        let name = entry.file_name().to_string_lossy().to_string();
+        let ext = path
+            .extension()
+            .map(|e| e.to_string_lossy().to_lowercase())
+            .unwrap_or_default();
+        if !GERBER_EXTS.contains(&ext.as_str()) {
+            continue;
+        }
+        if entry.metadata().map(|m| m.len() > MAX_FILE).unwrap_or(true) {
+            continue;
+        }
+        if let Ok(content) = std::fs::read_to_string(&path) {
+            out.push(GerberFile { filename: name, content });
+        }
+        if out.len() >= 24 {
+            break;
+        }
+    }
+    Ok(out)
+}
+
 // ---------- Global timeline ----------
 
 #[derive(Serialize)]

@@ -24,12 +24,13 @@ export function formatAgo(ms: number | null): string {
   return `${mo}mo ago`;
 }
 
+/** Theme-aware status colors (CSS variables switch with light/dark). */
 export const STATUS_COLORS: Record<string, string> = {
-  idea: "#7C8AA5",
-  active: "#22D3A6",
-  paused: "#8A97AC",
-  shipped: "#8B5CF6",
-  archived: "#5A657A",
+  idea: "var(--muted)",
+  active: "var(--accent)",
+  paused: "var(--muted)",
+  shipped: "var(--ok)",
+  archived: "var(--muted)",
 };
 
 export const STATUS_LABELS: Record<string, string> = {
@@ -39,3 +40,20 @@ export const STATUS_LABELS: Record<string, string> = {
   shipped: "Shipped",
   archived: "Archived",
 };
+
+export const HEALTH_COLORS: Record<string, string> = {
+  on_track: "var(--ok)",
+  at_risk: "var(--warn)",
+  late: "var(--danger)",
+};
+
+export const HEALTH_LABELS: Record<string, string> = {
+  on_track: "On track",
+  at_risk: "At risk",
+  late: "Late",
+};
+
+/** `color` at `pct`% opacity — works with CSS variables. */
+export function tint(color: string, pct: number): string {
+  return `color-mix(in srgb, ${color} ${pct}%, transparent)`;
+}

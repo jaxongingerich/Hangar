@@ -49,8 +49,9 @@ fn default_progress_mode() -> String {
     "manual".into()
 }
 
+// Muted, Claude-warm identity colors — readable on ivory and charcoal alike.
 const CARD_COLORS: &[&str] = &[
-    "#22D3A6", "#8B5CF6", "#38BDF8", "#F5A524", "#F472B6", "#A3E635", "#FB923C",
+    "#C96442", "#8778D7", "#5E9BAE", "#B0883D", "#B56C80", "#7D9B76", "#A8865E",
 ];
 
 impl Sidecar {

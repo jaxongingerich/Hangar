@@ -48,7 +48,7 @@ export function RootPicker() {
           <button
             onClick={choose}
             disabled={setRoot.isPending}
-            className="rounded-lg border border-line bg-panel-2 px-4 py-2.5 text-[13px] font-medium transition-colors hover:border-[#2E3A4E] disabled:opacity-50"
+            className="rounded-lg border border-line bg-panel-2 px-4 py-2.5 text-[13px] font-medium transition-colors hover:border-line-strong disabled:opacity-50"
           >
             Choose another folder…
           </button>

@@ -4,11 +4,12 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { api, FileRow, ProjectDetail } from "../../lib/api";
 import { formatAgo, formatBytes } from "../../lib/format";
-import { binIcon, fileIcon } from "../../lib/icons";
-import { useToasts } from "../../lib/store";
+import { BinTypeIcon, FileTypeIcon, Icon } from "../../lib/icons";
+import { useToasts, useUi } from "../../lib/store";
 import { SnapshotsPanel } from "./SnapshotsPanel";
 import { PlanSheet } from "../../components/PlanSheet";
 import { RenamePlanItem } from "../../lib/api";
+import { GerberPreview } from "./GerberPreview";
 
 type Scope =
   | { kind: "all" }
@@ -17,7 +18,13 @@ type Scope =
   | { kind: "snapshots" };
 
 export function FilesTab({ project }: { project: ProjectDetail }) {
-  const [scope, setScope] = useState<Scope>({ kind: "all" });
+  const [scope, setScopeRaw] = useState<Scope>({ kind: "all" });
+  const { setActiveBinId } = useUi();
+  const setScope = (s: Scope) => {
+    setScopeRaw(s);
+    // Window-wide drops target the open bin.
+    setActiveBinId(s.kind === "bin" ? s.binId : null);
+  };
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [renaming, setRenaming] = useState<number | null>(null);
   const [newBin, setNewBin] = useState<string | null>(null);
@@ -158,14 +165,14 @@ export function FilesTab({ project }: { project: ProjectDetail }) {
       <aside className="flex w-52 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-line p-2">
         <RailItem
           label="All files"
-          icon="🗂️"
+          icon={<Icon glyph="archive" />}
           count={project.bins.reduce((n, b) => n + b.file_count, 0) + project.root_file_count}
           active={scope.kind === "all"}
           onClick={() => setScope({ kind: "all" })}
         />
         <RailItem
           label="Loose files"
-          icon="📥"
+          icon={<Icon glyph="inbox" />}
           count={project.root_file_count}
           active={scope.kind === "root"}
           onClick={() => setScope({ kind: "root" })}
@@ -176,7 +183,7 @@ export function FilesTab({ project }: { project: ProjectDetail }) {
           <RailItem
             key={b.id}
             label={b.name}
-            icon={binIcon(b.name)}
+            icon={<BinTypeIcon name={b.name} />}
             count={b.file_count}
             active={scope.kind === "bin" && scope.binId === b.id}
             onClick={() => setScope({ kind: "bin", binId: b.id })}
@@ -186,7 +193,7 @@ export function FilesTab({ project }: { project: ProjectDetail }) {
         <div className="mx-2 my-1.5 border-t border-line" />
         <RailItem
           label="Snapshots"
-          icon="📸"
+          icon={<Icon glyph="camera" />}
           count={snapshots?.length ?? 0}
           active={scope.kind === "snapshots"}
           onClick={() => setScope({ kind: "snapshots" })}
@@ -286,8 +293,21 @@ export function FilesTab({ project }: { project: ProjectDetail }) {
           ) : (
             <>
               <span className="font-mono text-[11px] text-muted">
-                {rows.length} files · drag rows onto a bin to move them
+                {rows.length} files · drag from Finder to import
               </span>
+              <ToolbarBtn
+                label="Import files…"
+                onClick={async () => {
+                  const { open } = await import("@tauri-apps/plugin-dialog");
+                  const picked = await open({ multiple: true, title: "Import files" });
+                  if (!picked) return;
+                  const paths = Array.isArray(picked) ? picked : [picked];
+                  const binId = scope.kind === "bin" ? scope.binId : null;
+                  const n = await api.importFiles(paths, project.id, binId);
+                  push(`Imported ${n} file${n === 1 ? "" : "s"} (copied)`);
+                  invalidate();
+                }}
+              />
               {scope.kind === "bin" && (
                 <BinActions
                   project={project}
@@ -350,11 +370,16 @@ function BinActions({
   const [renamePlan, setRenamePlan] = useState<RenamePlanItem[] | null>(null);
   const [aiBusy, setAiBusy] = useState(false);
   const [applying, setApplying] = useState(false);
+  const [preview, setPreview] = useState(false);
   const bin = project.bins.find((b) => b.id === binId);
   const isGerbers = bin?.name.toLowerCase().includes("gerber") ?? false;
 
   return (
     <div className="ml-auto flex items-center gap-1">
+      {preview && <GerberPreview binId={binId} onClose={() => setPreview(false)} />}
+      {isGerbers && (
+        <ToolbarBtn label="Preview board" onClick={() => setPreview(true)} />
+      )}
       {renamePlan && (
         <PlanSheet
           title={`AI rename scheme — ${bin?.name}`}
@@ -383,7 +408,7 @@ function BinActions({
         />
       )}
       <ToolbarBtn
-        label={aiBusy ? "Thinking…" : "✳️ AI rename"}
+        label={aiBusy ? "Thinking…" : "AI rename"}
         onClick={async () => {
           setAiBusy(true);
           try {
@@ -398,7 +423,7 @@ function BinActions({
         }}
       />
       <ToolbarBtn
-        label="📸 Snapshot"
+        label="Snapshot"
         onClick={async () => {
           const label = prompt("Snapshot label (e.g. Rev A):");
           if (!label?.trim()) return;
@@ -445,7 +470,7 @@ function RailItem({
   onDropIds,
 }: {
   label: string;
-  icon: string;
+  icon: React.ReactNode;
   count: number;
   active: boolean;
   onClick: () => void;
@@ -472,7 +497,7 @@ function RailItem({
         active ? "bg-panel-2 text-text" : "text-muted hover:bg-panel hover:text-text"
       } ${over ? "ring-1 ring-solder" : ""}`}
     >
-      <span className="text-[13px]">{icon}</span>
+      <span className="flex w-4 justify-center">{icon}</span>
       <span className="flex-1 truncate">{label}</span>
       <span className="font-mono text-[10px]">{count}</span>
     </button>
@@ -594,7 +619,7 @@ function FileList({
               }`}
               style={{ top: vi.start, height: vi.size }}
             >
-              <span className="w-5 text-center text-[13px]">{fileIcon(f.ext)}</span>
+              <span className="flex w-5 justify-center text-muted"><FileTypeIcon ext={f.ext} /></span>
               {renaming === f.id ? (
                 <RenameInput
                   initial={f.name}

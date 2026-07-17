@@ -22,6 +22,7 @@
     "chrono-node": "^2.10.0",
     "cmdk": "^1.1.1",
     "framer-motion": "^12.42.2",
+    "pcb-stackup": "^4.2.8",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "recharts": "^3.9.2",
@@ -37,6 +38,7 @@
     "tailwindcss": "^4.3.3",
     "typescript": "~5.8.3",
     "vite": "^7.0.4",
+    "vite-plugin-node-polyfills": "^0.28.0",
     "vitest": "^4.1.10"
   }
 }

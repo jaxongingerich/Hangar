@@ -96,7 +96,7 @@ export function Dashboard() {
           </p>
         ) : cards.length === 0 ? (
           <div className="mx-auto mt-16 max-w-[360px] text-center">
-            <div className="mb-2 text-[28px]">🛩️</div>
+            
             <div className="mb-1 text-[16px] font-semibold">
               The hangar is empty
             </div>
@@ -182,7 +182,7 @@ function IdeaBacklog() {
             key={idea.id}
             className="flex max-w-[480px] items-center gap-2 rounded-lg border border-line/60 bg-panel px-3 py-2"
           >
-            <span className="text-st-idea">◌</span>
+            <span className="text-muted">◌</span>
             <span className="flex-1 truncate text-[12.5px]">{idea.name}</span>
             <button
               onClick={() => promote.mutate(idea)}

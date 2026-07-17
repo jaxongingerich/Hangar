@@ -32,7 +32,7 @@ export function SnapshotsPanel({
     return (
       <div className="flex flex-1 items-center justify-center">
         <p className="max-w-[320px] text-center text-muted">
-          No snapshots yet. Open a bin (Gerbers, say) and hit 📸 Snapshot to
+          No snapshots yet. Open a bin (Gerbers, say) and hit Snapshot to
           freeze a labelled revision — then diff any two, and export exactly
           what you fabbed.
         </p>

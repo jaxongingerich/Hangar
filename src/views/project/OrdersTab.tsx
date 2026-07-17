@@ -6,10 +6,10 @@ import { useToasts } from "../../lib/store";
 
 const STATUS_FLOW = ["ordered", "shipped", "arrived", "issue"] as const;
 const STATUS_COLOR: Record<string, string> = {
-  ordered: "#8A97AC",
-  shipped: "#38BDF8",
-  arrived: "#22D3A6",
-  issue: "#F5556D",
+  ordered: "var(--muted)",
+  shipped: "var(--warn)",
+  arrived: "var(--ok)",
+  issue: "var(--danger)",
 };
 
 export function OrdersTab({ projectId }: { projectId: number }) {

@@ -170,7 +170,7 @@ function Usage() {
           <button
             key={p.id}
             onClick={() => openProject(p.id)}
-            className="rounded-panel border border-line bg-panel p-3 text-left transition-colors hover:border-[#2E3A4E]"
+            className="rounded-panel border border-line bg-panel p-3 text-left transition-colors hover:border-line-strong"
           >
             <div className="mb-1.5 flex items-center gap-2">
               <span>{p.emoji}</span>
@@ -241,7 +241,7 @@ function Usage() {
 
       {stale.length > 0 && (
         <p className="text-[12px] text-muted">
-          💤 {stale.length} project{stale.length === 1 ? "" : "s"} untouched for
+          {stale.length} project{stale.length === 1 ? "" : "s"} untouched for
           3+ weeks — consider archiving from the project header.
         </p>
       )}
@@ -358,7 +358,7 @@ function Archives() {
               key={a.path}
               className="flex items-center gap-3 border-b border-line/50 bg-panel px-4 py-2.5 last:border-b-0"
             >
-              <span>🗜️</span>
+              
               <span className="min-w-0 flex-1 truncate text-[12.5px]">{a.name}</span>
               <span className="font-mono text-[11px] text-muted">{formatBytes(a.size)}</span>
               <span className="font-mono text-[11px] text-muted">{formatAgo(a.created_ms)}</span>

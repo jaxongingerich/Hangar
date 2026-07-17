@@ -55,7 +55,7 @@ export function Today() {
                   key={o.id}
                   className="flex items-center gap-3 border-b border-line/50 bg-panel px-4 py-2.5 last:border-b-0"
                 >
-                  <span>📦</span>
+                  <span className="text-muted">▸</span>
                   <span className="text-[12.5px]">
                     {o.vendor}
                     {o.items ? ` — ${o.items}` : ""}
@@ -132,7 +132,7 @@ function TaskGroup({
               className="flex h-4 w-4 items-center justify-center rounded border border-line text-[10px] hover:border-solder"
             />
             <span className="flex-1 truncate text-[12.5px]">
-              {t.blocked && <span className="mr-1">⛔</span>}
+              {t.blocked && <span className="mr-1.5 font-mono text-[10px] font-semibold uppercase text-st-late">block</span>}
               {t.title}
             </span>
             <button

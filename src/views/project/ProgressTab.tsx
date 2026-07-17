@@ -11,20 +11,11 @@ import {
   YAxis,
 } from "recharts";
 import { api, MilestoneRow, ProjectDetail, TaskRow } from "../../lib/api";
-import { STATUS_COLORS } from "../../lib/format";
+import { HEALTH_COLORS as HEALTH_COLOR, HEALTH_LABELS as HEALTH_LABEL, STATUS_COLORS, tint } from "../../lib/format";
 import { ProgressRing } from "../../components/ProgressRing";
 import { useToasts } from "../../lib/store";
 
-const HEALTH_COLOR: Record<string, string> = {
-  on_track: "#22D3A6",
-  at_risk: "#F5A524",
-  late: "#F5556D",
-};
-const HEALTH_LABEL: Record<string, string> = {
-  on_track: "On track",
-  at_risk: "At risk",
-  late: "Late",
-};
+
 
 export function ProgressTab({ project }: { project: ProjectDetail }) {
   const qc = useQueryClient();
@@ -88,7 +79,7 @@ export function ProgressTab({ project }: { project: ProjectDetail }) {
               className="rounded-full px-2.5 py-0.5 text-[12px] font-semibold"
               style={{
                 color: HEALTH_COLOR[stats?.health ?? "on_track"],
-                background: `${HEALTH_COLOR[stats?.health ?? "on_track"]}1A`,
+                background: tint(HEALTH_COLOR[stats?.health ?? "on_track"], 12),
               }}
             >
               {HEALTH_LABEL[stats?.health ?? "on_track"]}
@@ -109,16 +100,16 @@ export function ProgressTab({ project }: { project: ProjectDetail }) {
           <div className="mb-5 rounded-panel border border-line bg-panel p-4">
             <ResponsiveContainer width="100%" height={140}>
               <LineChart data={stats!.history.map((h) => ({ ts: h.ts.slice(5, 10), value: h.value }))}>
-                <XAxis dataKey="ts" tick={{ fontSize: 10, fill: "#8A97AC", fontFamily: "JetBrains Mono Variable" }} axisLine={{ stroke: "#232C3B" }} tickLine={false} />
-                <YAxis domain={[0, 100]} width={30} tick={{ fontSize: 10, fill: "#8A97AC", fontFamily: "JetBrains Mono Variable" }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="ts" tick={{ fontSize: 10, fill: "var(--muted)", fontFamily: "JetBrains Mono Variable" }} axisLine={{ stroke: "var(--line)" }} tickLine={false} />
+                <YAxis domain={[0, 100]} width={30} tick={{ fontSize: 10, fill: "var(--muted)", fontFamily: "JetBrains Mono Variable" }} axisLine={false} tickLine={false} />
                 <Tooltip
-                  contentStyle={{ background: "#1A2130", border: "1px solid #232C3B", borderRadius: 8, fontSize: 11 }}
-                  labelStyle={{ color: "#8A97AC" }}
+                  contentStyle={{ background: "var(--bg2)", border: "1px solid var(--line)", borderRadius: 8, fontSize: 11, color: "var(--text)" }}
+                  labelStyle={{ color: "var(--muted)" }}
                 />
                 {project.target_date && (
-                  <ReferenceLine x={project.target_date.slice(5, 10)} stroke="#F5A524" strokeDasharray="4 3" />
+                  <ReferenceLine x={project.target_date.slice(5, 10)} stroke="var(--warn)" strokeDasharray="4 3" />
                 )}
-                <Line type="monotone" dataKey="value" stroke="#22D3A6" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="value" stroke="var(--accent)" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -132,7 +123,7 @@ export function ProgressTab({ project }: { project: ProjectDetail }) {
             </div>
             {blocked.map((t) => (
               <div key={t.id} className="flex items-center gap-2 py-1 text-[12.5px]">
-                <span>⛔</span>
+                <span className="font-mono text-[10px] font-semibold uppercase text-st-late">block</span>
                 <span>{t.title}</span>
                 {t.blocked_reason && <span className="text-muted">— {t.blocked_reason}</span>}
                 <button
@@ -368,9 +359,9 @@ function MilestoneKanban({
 }
 
 const PRIORITY_COLOR: Record<string, string> = {
-  high: "#F5556D",
-  med: "#8A97AC",
-  low: "#5A657A",
+  high: "var(--danger)",
+  med: "var(--muted)",
+  low: "var(--line-strong)",
 };
 
 function TaskSection({
@@ -469,7 +460,7 @@ function TaskSection({
                 title={`${t.priority} priority`}
               />
               <span className={`flex-1 truncate text-[12.5px] ${t.done ? "line-through" : ""}`}>
-                {t.blocked && <span className="mr-1">⛔</span>}
+                {t.blocked && <span className="mr-1.5 font-mono text-[10px] font-semibold uppercase text-st-late">block</span>}
                 {t.title}
               </span>
               {t.recurrence && (
@@ -557,8 +548,8 @@ function Heatmap({ data }: { data: number[] }) {
                 style={{
                   background:
                     count > 0
-                      ? `rgba(34, 211, 166, ${0.25 + 0.75 * (count / max)})`
-                      : "var(--color-panel-2)",
+                      ? tint("var(--accent)", Math.round(25 + 75 * (count / max)))
+                      : "var(--bg2)",
                 }}
                 title={`${count} events`}
               />

@@ -5,6 +5,7 @@ pub mod commands_m3;
 pub mod commands_m4;
 pub mod commands_m5;
 pub mod ai;
+pub mod mcp;
 pub mod db;
 pub mod error;
 pub mod ops;
@@ -70,6 +71,78 @@ pub fn restart_sweepers(app: &tauri::AppHandle) {
     }
 }
 
+fn setup_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
+    use tauri::menu::{MenuBuilder, MenuItemBuilder};
+    use tauri::tray::TrayIconBuilder;
+    use tauri::Emitter;
+
+    let open = MenuItemBuilder::with_id("open", "Open Hangar").build(app)?;
+    let new_idea = MenuItemBuilder::with_id("new_idea", "New idea…").build(app)?;
+    let new_project = MenuItemBuilder::with_id("new_project", "New project…").build(app)?;
+    let stop_timer = MenuItemBuilder::with_id("stop_timer", "Stop timer").build(app)?;
+    let quit = MenuItemBuilder::with_id("quit", "Quit Hangar").build(app)?;
+    let menu = MenuBuilder::new(app)
+        .items(&[&open, &new_idea, &new_project])
+        .separator()
+        .item(&stop_timer)
+        .separator()
+        .item(&quit)
+        .build()?;
+
+    let show_main = |app: &tauri::AppHandle| {
+        if let Some(win) = app.get_webview_window("main") {
+            let _ = win.show();
+            let _ = win.set_focus();
+        }
+    };
+
+    let mut tray = TrayIconBuilder::with_id("hangar-tray")
+        .menu(&menu)
+        .show_menu_on_left_click(true)
+        .tooltip("Hangar");
+    if let Some(icon) = app.default_window_icon() {
+        tray = tray.icon(icon.clone()).icon_as_template(false);
+    }
+    tray.on_menu_event(move |app, event| match event.id().as_ref() {
+        "open" => show_main(app),
+        "new_idea" => {
+            show_main(app);
+            let _ = app.emit("tray-new-idea", ());
+        }
+        "new_project" => {
+            show_main(app);
+            let _ = app.emit("tray-new-project", ());
+        }
+        "stop_timer" => {
+            let state = app.state::<AppState>();
+            let conn = state.conn.lock().unwrap();
+            let _ = conn.execute(
+                "UPDATE time_entries SET ended_at = datetime('now') WHERE ended_at IS NULL",
+                [],
+            );
+            let _ = app.emit("fs-changed", ());
+        }
+        "quit" => app.exit(0),
+        _ => {}
+    })
+    .build(app)?;
+    Ok(())
+}
+
+#[tauri::command]
+fn mcp_info(state: tauri::State<AppState>) -> crate::error::AppResult<serde_json::Value> {
+    let conn = state.conn.lock().unwrap();
+    let token = mcp::ensure_token(&conn)?;
+    let url = format!("http://127.0.0.1:{}/mcp", mcp::MCP_PORT);
+    Ok(serde_json::json!({
+        "url": url,
+        "token": token,
+        "install_cmd": format!(
+            "claude mcp add --transport http hangar {url} --header \"Authorization: Bearer {token}\""
+        )
+    }))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tracing_subscriber::fmt()
@@ -99,6 +172,18 @@ pub fn run() {
                 }
                 restart_sweepers(app.handle());
             }
+
+            // MCP server so Claude Code / Desktop can drive Hangar.
+            {
+                let state = app.state::<AppState>();
+                let conn = state.conn.lock().unwrap();
+                if let Ok(token) = mcp::ensure_token(&conn) {
+                    mcp::start(app.handle().clone(), state.db_path.clone(), token);
+                }
+            }
+
+            // Menu-bar quick capture.
+            setup_tray(app.handle())?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -195,6 +280,8 @@ pub fn run() {
             commands_m4::set_backup_dir,
             commands_m4::run_backup,
             commands_m4::global_timeline,
+            commands_m4::read_bin_gerbers,
+            commands_m4::import_files,
             commands_m5::ai_get_config,
             commands_m5::ai_set_config,
             commands_m5::ai_set_key,
@@ -208,6 +295,7 @@ pub fn run() {
             commands_m5::ai_weekly_digest,
             commands_m5::ai_smart_rename,
             commands_m5::ai_project_chat,
+            mcp_info,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

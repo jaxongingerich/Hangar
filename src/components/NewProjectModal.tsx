@@ -67,7 +67,7 @@ export function NewProjectModal() {
                   className={`flex items-baseline gap-2 rounded-lg border px-3 py-2 text-left transition-colors ${
                     template === t.id
                       ? "border-solder bg-solder/5"
-                      : "border-line hover:border-[#2E3A4E]"
+                      : "border-line hover:border-line-strong"
                   }`}
                 >
                   <span className="text-[13px] font-medium">{t.label}</span>

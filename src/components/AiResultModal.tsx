@@ -24,7 +24,7 @@ export function AiResultModal() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-2 border-b border-line px-5 py-3.5">
-              <span className="text-[14px] font-semibold">✳️ {aiResult.title}</span>
+              <span className="text-[14px] font-semibold">{aiResult.title}</span>
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(aiResult.text);

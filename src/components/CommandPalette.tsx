@@ -102,8 +102,8 @@ export function CommandPalette() {
                 close();
               }}
             >
-              <span className="w-4 text-center">
-                {h.kind === "project" ? "📦" : h.kind === "file" ? "📄" : "📝"}
+              <span className="w-4 text-center font-mono text-[10px] uppercase text-muted">
+                {h.kind === "project" ? "P" : h.kind === "file" ? "F" : "L"}
               </span>
               <span className="truncate">{h.title}</span>
               <span className="ml-auto max-w-[220px] truncate font-mono text-[10px] text-muted">
@@ -149,7 +149,7 @@ export function CommandPalette() {
                       }
                     }}
                   >
-                    ✳️ Catch me up on this project
+                    Catch me up on this project
                   </Item>
                 )}
                 <Item
@@ -165,7 +165,7 @@ export function CommandPalette() {
                     }
                   }}
                 >
-                  ✳️ Weekly digest across projects
+                  Weekly digest across projects
                 </Item>
               </Command.Group>
               <Command.Group

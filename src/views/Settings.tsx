@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-dialog";
 import { api, RuleRow } from "../lib/api";
-import { useToasts } from "../lib/store";
+import { Theme, useTheme, useToasts } from "../lib/store";
 
 export function Settings({ root }: { root: string | null }) {
   const qc = useQueryClient();
@@ -24,6 +24,8 @@ export function Settings({ root }: { root: string | null }) {
       <div className="mx-auto max-w-[640px] px-6 pb-10 pt-5">
         <h1 className="mb-6 text-[20px] font-semibold">Settings</h1>
 
+        <Appearance />
+
         <section className="mb-8">
           <h2 className="mb-2 text-[14px] font-semibold">Root folder</h2>
           <div className="flex items-center gap-3 rounded-panel border border-line bg-panel px-4 py-3">
@@ -44,11 +46,39 @@ export function Settings({ root }: { root: string | null }) {
         </section>
 
         <AiSection />
+        <McpSection />
         <RulesEditor />
         <WatchedFolders />
         <Backups />
       </div>
     </div>
+  );
+}
+
+function Appearance() {
+  const { theme, setTheme } = useTheme();
+  const options: { id: Theme; label: string }[] = [
+    { id: "system", label: "System" },
+    { id: "light", label: "Light" },
+    { id: "dark", label: "Dark" },
+  ];
+  return (
+    <section className="mb-8">
+      <h2 className="mb-2 text-[14px] font-semibold">Appearance</h2>
+      <div className="flex w-fit rounded-lg border border-line p-0.5">
+        {options.map((o) => (
+          <button
+            key={o.id}
+            onClick={() => setTheme(o.id)}
+            className={`rounded-md px-4 py-1.5 text-[12px] font-medium transition-colors ${
+              theme === o.id ? "bg-panel-2 text-text" : "text-muted hover:text-text"
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -318,6 +348,54 @@ function Backups() {
       {(status?.backups.length ?? 0) > 0 && (
         <div className="mt-2 font-mono text-[11px] text-muted">
           {status!.backups.map(([name]) => name).join(" · ")}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function McpSection() {
+  const { push } = useToasts();
+  const { data: info } = useQuery({ queryKey: ["mcp"], queryFn: api.mcpInfo });
+
+  return (
+    <section className="mt-8">
+      <h2 className="mb-2 text-[14px] font-semibold">MCP server</h2>
+      <p className="mb-3 text-[12px] leading-relaxed text-muted">
+        Claude Code and Claude Desktop can drive Hangar directly — create
+        projects, file things, complete tasks, set progress. Local only,
+        bearer-token protected.
+      </p>
+      {info && (
+        <div className="flex flex-col gap-2 rounded-panel border border-line bg-panel p-4">
+          <div className="flex items-center gap-2">
+            <span className="w-14 text-[11px] text-muted">URL</span>
+            <span className="font-mono text-[12px]">{info.url}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-14 text-[11px] text-muted">Token</span>
+            <span className="font-mono text-[12px]">
+              {info.token.slice(0, 6)}…{info.token.slice(-4)}
+            </span>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(info.token);
+                push("Token copied");
+              }}
+              className="rounded-md border border-line px-2 py-0.5 text-[11px] text-muted hover:border-solder hover:text-solder"
+            >
+              Copy
+            </button>
+          </div>
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(info.install_cmd);
+              push("Install command copied — paste it in a terminal");
+            }}
+            className="mt-1 self-start rounded-md bg-solder px-3 py-1.5 text-[12px] font-semibold text-ink"
+          >
+            Copy `claude mcp add` command
+          </button>
         </div>
       )}
     </section>

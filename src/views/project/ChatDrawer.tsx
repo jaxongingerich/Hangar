@@ -43,7 +43,7 @@ export function ChatDrawer({
   return (
     <aside className="flex w-80 shrink-0 flex-col border-l border-line">
       <div className="flex items-center gap-2 border-b border-line px-3 py-2.5">
-        <span className="text-[13px] font-semibold">✳️ Project chat</span>
+        <span className="text-[13px] font-semibold">Project chat</span>
         <button
           onClick={() => setMessages([])}
           className="ml-auto text-[11px] text-muted hover:text-text"

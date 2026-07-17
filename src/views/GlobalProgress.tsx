@@ -5,16 +5,7 @@ import { api } from "../lib/api";
 import { useUi } from "../lib/store";
 import { ProgressRing } from "../components/ProgressRing";
 
-const HEALTH_COLOR: Record<string, string> = {
-  on_track: "#22D3A6",
-  at_risk: "#F5A524",
-  late: "#F5556D",
-};
-const HEALTH_LABEL: Record<string, string> = {
-  on_track: "On track",
-  at_risk: "At risk",
-  late: "Late",
-};
+import { HEALTH_COLORS as HEALTH_COLOR, HEALTH_LABELS as HEALTH_LABEL, tint } from "../lib/format";
 
 export function GlobalProgress() {
   const { openProject } = useUi();
@@ -53,7 +44,7 @@ export function GlobalProgress() {
           </div>
           <div className="ml-auto flex items-center gap-5 rounded-panel border border-line bg-panel px-5 py-2.5">
             <div className="flex items-center gap-2.5">
-              <ProgressRing value={avg} color="#22D3A6" size={34} stroke={3} />
+              <ProgressRing value={avg} color="var(--accent)" size={34} stroke={3} />
               <span className="text-[11px] text-muted">portfolio avg</span>
             </div>
             <span className="font-mono text-[11px] text-muted">
@@ -98,7 +89,7 @@ export function GlobalProgress() {
             <button
               key={r.id}
               onClick={() => openProject(r.id)}
-              className="flex items-center gap-4 rounded-panel border border-line bg-panel px-4 py-3 text-left transition-colors hover:border-[#2E3A4E]"
+              className="flex items-center gap-4 rounded-panel border border-line bg-panel px-4 py-3 text-left transition-colors hover:border-line-strong"
             >
               <span className="text-[16px]">{r.emoji}</span>
               <span className="w-44 truncate text-[13px] font-medium">{r.name}</span>
@@ -117,7 +108,7 @@ export function GlobalProgress() {
                 className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
                 style={{
                   color: HEALTH_COLOR[r.health],
-                  background: `${HEALTH_COLOR[r.health]}1A`,
+                  background: tint(HEALTH_COLOR[r.health], 12),
                 }}
               >
                 {HEALTH_LABEL[r.health]}
@@ -133,7 +124,7 @@ export function GlobalProgress() {
                 {r.days_since_touch != null ? `${r.days_since_touch}d` : "—"}
               </span>
               {r.blocked_count > 0 && (
-                <span className="font-mono text-[11px] text-st-late">⛔ {r.blocked_count}</span>
+                <span className="font-mono text-[11px] text-st-late">{r.blocked_count} blocked</span>
               )}
             </button>
           ))}

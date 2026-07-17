@@ -1,18 +1,56 @@
 @import "tailwindcss";
 
-@theme {
-  --color-ink: #0b0e14;
-  --color-panel: #131822;
-  --color-panel-2: #1a2130;
-  --color-line: #232c3b;
-  --color-text: #e6ebf2;
-  --color-muted: #8a97ac;
-  --color-solder: #22d3a6;
-  --color-st-idea: #7c8aa5;
-  --color-st-active: #22d3a6;
-  --color-st-risk: #f5a524;
-  --color-st-late: #f5556d;
-  --color-st-shipped: #8b5cf6;
+/* ---- Claude-warm theme tokens ---------------------------------------- */
+/* Light: ivory & warm neutrals. Dark: warm charcoal. Accent: Claude coral. */
+:root {
+  --bg0: #faf9f5;
+  --bg1: #f0eee6;
+  --bg2: #e8e6dc;
+  --line: #dedbd1;
+  --line-strong: #c9c5b8;
+  --text: #1f1e1d;
+  --muted: #6e6a60;
+  --accent: #c96442;
+  --accent-soft: #d97757;
+  --on-accent: #ffffff;
+  --ok: #7d9b76;
+  --warn: #c28f2c;
+  --danger: #bf4d43;
+  --violet: #8778d7;
+}
+
+.dark {
+  --bg0: #262624;
+  --bg1: #30302e;
+  --bg2: #3a3a37;
+  --line: #43423e;
+  --line-strong: #57554f;
+  --text: #f0eee6;
+  --muted: #a6a39a;
+  --accent: #d97757;
+  --accent-soft: #d97757;
+  --on-accent: #1f1e1d;
+  --ok: #8ba883;
+  --warn: #d4a027;
+  --danger: #cf6b62;
+  --violet: #9b8fdb;
+}
+
+@theme inline {
+  --color-ink: var(--bg0);
+  --color-panel: var(--bg1);
+  --color-panel-2: var(--bg2);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-solder: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-st-idea: var(--muted);
+  --color-st-active: var(--accent);
+  --color-st-risk: var(--warn);
+  --color-st-late: var(--danger);
+  --color-st-shipped: var(--ok);
 
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
@@ -28,8 +66,8 @@ body,
 }
 
 body {
-  background: var(--color-ink);
-  color: var(--color-text);
+  background: var(--bg0);
+  color: var(--text);
   font-family: var(--font-sans);
   font-size: 13px;
   -webkit-font-smoothing: antialiased;
@@ -49,18 +87,25 @@ h3 {
   height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-line);
+  background: var(--line);
   border-radius: 5px;
-  border: 2px solid var(--color-ink);
+  border: 2px solid var(--bg0);
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-solder);
+  outline: 2px solid var(--accent);
   outline-offset: 1px;
   border-radius: 6px;
+}
+
+input[type="date"] {
+  color-scheme: light;
+}
+.dark input[type="date"] {
+  color-scheme: dark;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,0 +1,31 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Hangar app icon — "Blueprint at night" -->
+  <defs>
+    <clipPath id="squircle">
+      <rect x="64" y="64" width="896" height="896" rx="200"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#squircle)">
+    <rect x="64" y="64" width="896" height="896" fill="#262624"/>
+    <!-- faint blueprint grid -->
+    <g stroke="#33322f" stroke-width="4">
+      <line x1="64" y1="288" x2="960" y2="288"/>
+      <line x1="64" y1="512" x2="960" y2="512"/>
+      <line x1="64" y1="736" x2="960" y2="736"/>
+      <line x1="288" y1="64" x2="288" y2="960"/>
+      <line x1="512" y1="64" x2="512" y2="960"/>
+      <line x1="736" y1="64" x2="736" y2="960"/>
+    </g>
+    <!-- hangar arch: outer teal band -->
+    <path d="M 232 768 L 232 560 A 280 280 0 0 1 792 560 L 792 768 L 704 768 L 704 560 A 192 192 0 0 0 320 560 L 320 768 Z"
+          fill="#D97757"/>
+    <!-- door slot -->
+    <rect x="452" y="596" width="120" height="172" rx="24" fill="#D97757" opacity="0.55"/>
+    <!-- progress tick above the arch -->
+    <circle cx="512" cy="332" r="34" fill="#D97757"/>
+    <!-- baseline -->
+    <rect x="200" y="768" width="624" height="26" rx="13" fill="#43423E"/>
+  </g>
+  <!-- hairline edge -->
+  <rect x="66" y="66" width="892" height="892" rx="198" fill="none" stroke="#43423E" stroke-width="4"/>
+</svg>

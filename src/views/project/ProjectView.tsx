@@ -101,7 +101,7 @@ export function ProjectView({ projectId }: { projectId: number }) {
             }`}
             title="AI project chat"
           >
-            ✳️
+            Chat
           </button>
           <HeaderMenu projectId={projectId} projectName={project.name} />
           <TimerButton projectId={projectId} />
