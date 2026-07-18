@@ -88,3 +88,73 @@ async fn ollama_auto_resolves_a_missing_model() {
         assert!(!resp.text.trim().is_empty());
     }
 }
+
+/// Codex is driven through the generic `Custom` CLI flavor. This is a
+/// regression test for a real bug: the recipe used a bare `exec`, and
+/// `codex exec` refuses to run outside a trusted git repo with
+/// "Not inside a trusted directory and --skip-git-repo-check was not
+/// specified", so every Codex send failed. The flag must stay in the args.
+#[tokio::test]
+#[ignore]
+async fn codex_cli_answers_under_stripped_path() {
+    strip_path_like_gui_launch();
+    let provider = Provider::Cli {
+        command: "codex".into(),
+        model: None,
+        // Exactly what CLI_RECIPES ships, split the same way the app splits it.
+        extra_args: "exec --skip-git-repo-check"
+            .split_whitespace()
+            .map(String::from)
+            .collect(),
+        flavor: CliFlavor::Custom,
+    };
+    let msgs = vec![ChatMessage {
+        role: "user".into(),
+        content: "reply with the single word: ready".into(),
+    }];
+    let resp = provider
+        .chat("Be terse.", &msgs)
+        .await
+        .expect("codex CLI should answer even with a stripped PATH");
+    println!("codex reply: {:?}", resp.text);
+    assert!(!resp.text.trim().is_empty(), "reply must not be empty");
+    assert!(
+        !resp.text.contains("trusted directory"),
+        "must not hit the git-repo-check refusal: {}",
+        resp.text
+    );
+}
+
+/// Without the flag, codex refuses — proving the fix is load-bearing rather
+/// than incidental. If a future codex version drops this requirement the test
+/// will start failing, which is the signal to simplify the recipe.
+#[tokio::test]
+#[ignore]
+async fn codex_without_skip_flag_is_refused() {
+    strip_path_like_gui_launch();
+    let provider = Provider::Cli {
+        command: "codex".into(),
+        model: None,
+        extra_args: vec!["exec".into()],
+        flavor: CliFlavor::Custom,
+    };
+    let msgs = vec![ChatMessage {
+        role: "user".into(),
+        content: "reply with the single word: ready".into(),
+    }];
+    let result = provider.chat("Be terse.", &msgs).await;
+    match result {
+        Err(e) => {
+            let s = e.to_string();
+            println!("expected refusal: {s}");
+            assert!(
+                s.contains("trusted directory") || s.contains("skip-git-repo-check"),
+                "expected the git-repo-check refusal, got: {s}"
+            );
+        }
+        Ok(r) => panic!(
+            "codex answered without the flag — the recipe may no longer need it: {:?}",
+            r.text
+        ),
+    }
+}

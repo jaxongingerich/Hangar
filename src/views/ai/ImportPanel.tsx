@@ -142,6 +142,25 @@ export function ImportPanel({
     onError: (e) => push(String(e), "error"),
   });
 
+  const removeImported = useMutation({
+    mutationFn: async (list: DiscoveredSession[]) =>
+      api.aiDeleteImported(list.map((s) => [s.source, s.id] as [string, string])),
+    onSuccess: (n) => {
+      push(
+        `Removed ${n} chat${n === 1 ? "" : "s"} from Hangar — the original files are untouched, so you can re-import anytime`,
+      );
+      setSelected(new Set());
+      refresh();
+      onImported();
+    },
+    onError: (e) => push(String(e), "error"),
+  });
+
+  const imported = useMemo(
+    () => (sessions ?? []).filter((s) => s.imported),
+    [sessions],
+  );
+
   const missingBridges = (bridges ?? []).filter((b) => !b.installed);
 
   return (
@@ -271,6 +290,50 @@ export function ImportPanel({
             </div>
           ))}
         </>
+      )}
+
+      {imported.length > 0 && (
+        <div className="mt-6 border-t border-line pt-4">
+          <div className="mb-2 flex items-center gap-2">
+            <span className="text-[11.5px] font-medium">
+              Already in Hangar · {imported.length}
+            </span>
+            <button
+              onClick={() => {
+                const picked = imported.filter((s) => selected.has(key(s)));
+                if (picked.length === 0) {
+                  push("Select the chats you want to remove", "error");
+                  return;
+                }
+                removeImported.mutate(picked);
+              }}
+              disabled={removeImported.isPending}
+              className={`ml-auto ${ghostBtn}`}
+              title="Removes Hangar's copy only — the original session files stay on disk"
+            >
+              {removeImported.isPending ? "Removing…" : "Remove selected"}
+            </button>
+          </div>
+          {imported.map((s) => (
+            <label
+              key={key(s)}
+              className="mb-0.5 flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-1.5 hover:bg-panel"
+            >
+              <input
+                type="checkbox"
+                checked={selected.has(key(s))}
+                onChange={() => toggle(s)}
+                className="shrink-0"
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[12px]">{s.title}</span>
+                <span className="text-[10.5px] text-muted">
+                  {sourceLabel(s.source)} · {s.message_count} msgs
+                </span>
+              </span>
+            </label>
+          ))}
+        </div>
       )}
     </div>
   );

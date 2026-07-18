@@ -666,9 +666,13 @@ const CLI_RECIPES: &[(&str, &str, &str, &str)] = &[
         "Chat with Claude using your existing Claude login on this Mac. No API key.",
     ),
     (
+        // `--skip-git-repo-check` is required: without it `codex exec` refuses to
+        // run outside a trusted git repo with "Not inside a trusted directory",
+        // which made every send from Hangar fail. Codex writes its transcript to
+        // stderr and only the final answer to stdout, so stdout parses cleanly.
         "codex",
         "ChatGPT · Codex",
-        "exec",
+        "exec --skip-git-repo-check",
         "Chat with ChatGPT using your existing Codex/ChatGPT login. No API key.",
     ),
     (
@@ -917,4 +921,23 @@ pub async fn ai_install_cli_bridge(command: String) -> AppResult<String> {
         return Err(AppError::msg(format!("npm install failed:\n{tail}")));
     }
     Ok(format!("{command} installed"))
+}
+
+/// Remove imported chats from Hangar by their upstream session ids. This only
+/// deletes Hangar's copy — the original session files on disk are never touched,
+/// so a deleted chat can always be re-imported.
+#[tauri::command]
+pub fn ai_delete_imported(
+    state: State<AppState>,
+    keys: Vec<(String, String)>,
+) -> AppResult<usize> {
+    let conn = state.conn.lock().unwrap();
+    let mut n = 0usize;
+    for (source, external_id) in keys {
+        n += conn.execute(
+            "DELETE FROM ai_chats WHERE source = ?1 AND external_id = ?2",
+            rusqlite::params![source, external_id],
+        )?;
+    }
+    Ok(n)
 }

@@ -52,6 +52,20 @@ fn cli_profile(name: &str, command: &str) -> AiProfileStored {
     }
 }
 
+fn codex_profile() -> AiProfileStored {
+    AiProfileStored {
+        id: String::new(),
+        name: "ChatGPT · Codex".into(),
+        provider: "cli".into(),
+        model: String::new(),
+        base_url: String::new(),
+        command: "codex".into(),
+        // Must match CLI_RECIPES — the skip flag is what makes codex runnable
+        // outside a git repo.
+        args: "exec --skip-git-repo-check".into(),
+    }
+}
+
 fn ollama_profile() -> AiProfileStored {
     AiProfileStored {
         id: String::new(),
@@ -161,6 +175,52 @@ async fn claude_full_connect_send_and_history() {
     let reply2 = chat_send_core(&mutex, chat_id, "and now say: go".into(), id)
         .await
         .expect("second send should go through");
+    assert!(!reply2.content.trim().is_empty());
+    let conn = mutex.lock().unwrap();
+    assert_eq!(message_count(&conn, chat_id), 4, "history appended, nothing lost");
+}
+
+/// Full app path for Codex: connect a profile, send through chat_send_core,
+/// and confirm both messages persist. Regression cover for the missing
+/// --skip-git-repo-check flag, which made every Codex send error out.
+#[tokio::test]
+#[ignore]
+async fn codex_full_connect_send_and_history() {
+    if hangar_lib::ai::which_bin("codex").is_none() {
+        eprintln!("SKIP: codex CLI not installed");
+        return;
+    }
+    let (_d, conn) = temp_db();
+    let id = upsert_profile(&conn, codex_profile()).unwrap();
+    let active = db::get_setting(&conn, "ai_active_profile").unwrap();
+    let chat_id = new_chat(&conn, active.as_deref());
+    assert_eq!(message_count(&conn, chat_id), 0);
+
+    let mutex = Mutex::new(conn);
+    let reply = chat_send_core(
+        &mutex,
+        chat_id,
+        "reply with the single word: ready".into(),
+        id.clone(),
+    )
+    .await
+    .expect("codex send should go through with no error");
+    println!("codex reply: {:?}", reply.content);
+    assert!(!reply.content.trim().is_empty(), "reply must not be empty");
+    assert!(
+        !reply.content.contains("trusted directory"),
+        "must not hit the git-repo-check refusal: {}",
+        reply.content
+    );
+
+    let conn = mutex.lock().unwrap();
+    assert_eq!(message_count(&conn, chat_id), 2, "user + assistant persisted");
+    drop(conn);
+
+    // Second turn appends rather than replacing.
+    let reply2 = chat_send_core(&mutex, chat_id, "and now say: go".into(), id)
+        .await
+        .expect("second codex send should go through");
     assert!(!reply2.content.trim().is_empty());
     let conn = mutex.lock().unwrap();
     assert_eq!(message_count(&conn, chat_id), 4, "history appended, nothing lost");

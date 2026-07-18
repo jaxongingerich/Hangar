@@ -127,10 +127,16 @@ fn derive_title(messages: &[ImportedMessage], fallback: &str) -> String {
 
 // ---------------------------------------------------------------- Claude Code
 
-pub fn parse_claude_code(path: &Path) -> AppResult<(Vec<ImportedMessage>, Option<String>)> {
+/// Returns (messages, cwd, native_title). `native_title` is the name Claude Code
+/// itself shows for the session — it writes an `ai-title` record into the JSONL —
+/// so imported chats read exactly as they do in the tool they came from.
+pub fn parse_claude_code(
+    path: &Path,
+) -> AppResult<(Vec<ImportedMessage>, Option<String>, Option<String>)> {
     let text = std::fs::read_to_string(path)?;
     let mut messages = Vec::new();
     let mut cwd = None;
+    let mut native_title = None;
 
     for line in text.lines() {
         let v: serde_json::Value = match serde_json::from_str(line) {
@@ -141,6 +147,16 @@ pub fn parse_claude_code(path: &Path) -> AppResult<(Vec<ImportedMessage>, Option
             if let Some(c) = v.get("cwd").and_then(|c| c.as_str()) {
                 cwd = Some(c.to_string());
             }
+        }
+        // Claude Code's own name for the chat — later records win, since the
+        // title is refined as the conversation grows.
+        if v.get("type").and_then(|t| t.as_str()) == Some("ai-title") {
+            if let Some(t) = v.get("aiTitle").and_then(|t| t.as_str()) {
+                if !t.trim().is_empty() {
+                    native_title = Some(t.trim().to_string());
+                }
+            }
+            continue;
         }
         let role = match v.get("type").and_then(|t| t.as_str()) {
             Some(r @ ("user" | "assistant")) => r,
@@ -164,12 +180,14 @@ pub fn parse_claude_code(path: &Path) -> AppResult<(Vec<ImportedMessage>, Option
                 .to_string(),
         });
     }
-    Ok((messages, cwd))
+    Ok((messages, cwd, native_title))
 }
 
 // ---------------------------------------------------------------------- Codex
 
-pub fn parse_codex(path: &Path) -> AppResult<(Vec<ImportedMessage>, Option<String>)> {
+pub fn parse_codex(
+    path: &Path,
+) -> AppResult<(Vec<ImportedMessage>, Option<String>, Option<String>)> {
     let text = std::fs::read_to_string(path)?;
     let mut messages = Vec::new();
     let mut cwd = None;
@@ -218,7 +236,9 @@ pub fn parse_codex(path: &Path) -> AppResult<(Vec<ImportedMessage>, Option<Strin
                 .to_string(),
         });
     }
-    Ok((messages, cwd))
+    // Codex writes no title record of its own, so callers fall back to deriving
+    // one from the first user message.
+    Ok((messages, cwd, None))
 }
 
 // --------------------------------------------------- cloud data-export files
@@ -509,11 +529,11 @@ pub fn discover_sessions(conn: &Connection) -> AppResult<Vec<DiscoveredSession>>
             continue;
         }
         for path in jsonl_files_under(&dir, prefix) {
-            let (messages, cwd) = match source {
+            let (messages, cwd, native_title) = match source {
                 "claude-code" => parse_claude_code(&path),
                 _ => parse_codex(&path),
             }
-            .unwrap_or_else(|_| (Vec::new(), None));
+            .unwrap_or_else(|_| (Vec::new(), None, None));
 
             if messages.is_empty() {
                 continue; // empty or unreadable session — nothing to show
@@ -525,7 +545,9 @@ pub fn discover_sessions(conn: &Connection) -> AppResult<Vec<DiscoveredSession>>
                 .unwrap_or_default();
             out.push(DiscoveredSession {
                 imported: existing.contains(&(source.to_string(), id.clone())),
-                title: derive_title(&messages, "Imported chat"),
+                // Show the name the source tool shows, so chats are recognisable.
+                title: native_title
+                    .unwrap_or_else(|| derive_title(&messages, "Imported chat")),
                 id,
                 source: source.to_string(),
                 path: path.to_string_lossy().to_string(),
@@ -583,7 +605,7 @@ pub fn import_sessions(
             "codex" => parse_codex(&path),
             other => Err(AppError::msg(format!("unknown import source: {other}"))),
         };
-        let (messages, cwd) = match parsed {
+        let (messages, cwd, _native) = match parsed {
             Ok(v) => v,
             Err(e) => {
                 summary.errors.push(format!("{}: {e}", s.title));
@@ -761,6 +783,22 @@ mod tests {
     }
 
     #[test]
+    fn prefers_claude_codes_own_ai_title() {
+        let dir = std::env::temp_dir().join("hangar_import_title_test");
+        std::fs::create_dir_all(&dir).unwrap();
+        let f = dir.join("t.jsonl");
+        std::fs::write(&f, concat!(
+            r#"{"type":"user","timestamp":"2026-01-01T00:00:00Z","message":{"content":"do a thing"}}"#, "\n",
+            r#"{"type":"ai-title","aiTitle":"Polish hanger app design","sessionId":"x"}"#, "\n",
+            r#"{"type":"assistant","timestamp":"2026-01-01T00:00:01Z","message":{"content":"ok"}}"#, "\n",
+        )).unwrap();
+        let (msgs, _cwd, title) = parse_claude_code(&f).unwrap();
+        assert_eq!(msgs.len(), 2, "ai-title record must not become a message");
+        assert_eq!(title.as_deref(), Some("Polish hanger app design"));
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
     fn parses_claude_code_jsonl() {
         let dir = std::env::temp_dir().join("hangar_import_cc_test");
         std::fs::create_dir_all(&dir).unwrap();
@@ -774,11 +812,12 @@ not json at all
 "#,
         )
         .unwrap();
-        let (msgs, cwd) = parse_claude_code(&f).unwrap();
+        let (msgs, cwd, title) = parse_claude_code(&f).unwrap();
         assert_eq!(msgs.len(), 2);
         assert_eq!(msgs[0].role, "user");
         assert_eq!(msgs[1].content, "hi back");
         assert_eq!(cwd.as_deref(), Some("/Users/x/proj"));
+        assert_eq!(title, None, "no ai-title record in this fixture");
         std::fs::remove_dir_all(&dir).ok();
     }
 
@@ -797,7 +836,7 @@ not json at all
 "#,
         )
         .unwrap();
-        let (msgs, cwd) = parse_codex(&f).unwrap();
+        let (msgs, cwd, _t) = parse_codex(&f).unwrap();
         assert_eq!(msgs.len(), 2, "developer role must be skipped");
         assert_eq!(msgs[0].content, "question");
         assert_eq!(msgs[1].content, "answer");

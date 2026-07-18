@@ -320,6 +320,7 @@ pub fn run() {
             commands_m6::suggest_imports,
             commands_m6::ai_detect_providers,
             commands_m6::ai_discover_sessions,
+            commands_m6::ai_delete_imported,
             commands_m6::ai_import_sessions,
             commands_m6::ai_import_export_file,
             commands_m6::ai_cli_bridge_status,

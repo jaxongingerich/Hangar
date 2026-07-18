@@ -504,6 +504,8 @@ export const api = {
     invoke<ImportSummary>("ai_import_sessions", { sessions, profileId }),
   aiImportExportFile: (path: string, profileId: string | null) =>
     invoke<ImportSummary>("ai_import_export_file", { path, profileId }),
+  aiDeleteImported: (keys: [string, string][]) =>
+    invoke<number>("ai_delete_imported", { keys }),
   aiCliBridgeStatus: () => invoke<CliBridgeStatus[]>("ai_cli_bridge_status"),
   aiInstallCliBridge: (command: string) =>
     invoke<string>("ai_install_cli_bridge", { command }),
