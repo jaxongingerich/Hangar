@@ -461,6 +461,54 @@ export const api = {
   aiProjectChat: (projectId: number, messages: { role: string; content: string }[]) =>
     invoke<string>("ai_project_chat", { projectId, messages }),
 
+  aiListProfiles: () => invoke<AiProfile[]>("ai_list_profiles"),
+  aiSaveProfile: (profile: {
+    id: string;
+    name: string;
+    provider: string;
+    model: string;
+    base_url: string;
+    command?: string;
+    args?: string;
+  }) =>
+    invoke<string>("ai_save_profile", {
+      profile: { command: "", args: "", ...profile },
+    }),
+  aiDeleteProfile: (id: string) => invoke<void>("ai_delete_profile", { id }),
+  aiActivateProfile: (id: string) => invoke<void>("ai_activate_profile", { id }),
+  aiSetProfileKey: (id: string, key: string) =>
+    invoke<void>("ai_set_profile_key", { id, key }),
+  aiDetectProviders: () => invoke<DetectedProvider[]>("ai_detect_providers"),
+
+  aiListChats: () => invoke<ChatRow[]>("ai_list_chats"),
+  aiNewChat: (projectId?: number | null) =>
+    invoke<number>("ai_new_chat", { projectId }),
+  aiUpdateChat: (
+    chatId: number,
+    patch: { title?: string; projectId?: number | null; clearProject?: boolean },
+  ) =>
+    invoke<void>("ai_update_chat", {
+      chatId,
+      title: patch.title,
+      projectId: patch.projectId,
+      clearProject: patch.clearProject,
+    }),
+  aiDeleteChat: (chatId: number) => invoke<void>("ai_delete_chat", { chatId }),
+  aiChatHistory: (chatId: number) =>
+    invoke<ChatMessageRow[]>("ai_chat_history", { chatId }),
+  aiChatSend: (chatId: number, content: string, profileId: string) =>
+    invoke<ChatMessageRow>("ai_chat_send", { chatId, content, profileId }),
+  readTextFile: (path: string) =>
+    invoke<{ name: string; content: string; truncated: boolean }>(
+      "read_text_file",
+      { path },
+    ),
+
+  suggestImports: () => invoke<SuggestedImport[]>("suggest_imports"),
+  mcpGetEnabled: () => invoke<boolean>("mcp_get_enabled"),
+  mcpSetEnabled: (enabled: boolean) =>
+    invoke<void>("mcp_set_enabled", { enabled }),
+
   importFiles: (paths: string[], projectId?: number | null, binId?: number | null) =>
     invoke<number>("import_files", { paths, projectId, binId }),
   readBinGerbers: (binId: number) =>
@@ -474,6 +522,57 @@ export interface AiConfig {
   model: string;
   base_url: string;
   has_key: boolean;
+}
+
+export interface AiProfile {
+  id: string;
+  name: string;
+  provider: string;
+  model: string;
+  base_url: string;
+  command: string;
+  has_key: boolean;
+  needs_key: boolean;
+  active: boolean;
+}
+
+export interface DetectedProvider {
+  id: string;
+  name: string;
+  provider: string;
+  model: string;
+  base_url: string;
+  command: string;
+  args: string;
+  note: string;
+  connectable: boolean;
+}
+
+export interface ChatRow {
+  id: number;
+  title: string;
+  profile_id: string | null;
+  project_id: number | null;
+  project_name: string | null;
+  message_count: number;
+  updated_at: string;
+}
+
+export interface ChatMessageRow {
+  id: number;
+  role: "user" | "assistant";
+  content: string;
+  provider: string | null;
+  model: string | null;
+  ts: string;
+}
+
+export interface SuggestedImport {
+  path: string;
+  name: string;
+  size: number;
+  mtime: number;
+  source: string;
 }
 
 export interface AiUsage {

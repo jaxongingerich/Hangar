@@ -4,18 +4,18 @@ import { listen } from "@tauri-apps/api/event";
 import { api } from "./lib/api";
 import { useUi } from "./lib/store";
 import { TitleBar } from "./components/TitleBar";
-import { IconRail } from "./components/IconRail";
+import { Sidebar } from "./components/Sidebar";
 import { NewProjectModal } from "./components/NewProjectModal";
 import { CommandPalette } from "./components/CommandPalette";
 import { Toasts } from "./components/Toasts";
 import { AiResultModal } from "./components/AiResultModal";
 import { Dashboard } from "./views/Dashboard";
 import { RootPicker } from "./views/RootPicker";
-import { Placeholder } from "./views/Placeholder";
 import { Inbox } from "./views/Inbox";
 import { Settings } from "./views/Settings";
 import { ProjectView } from "./views/project/ProjectView";
 import { Today } from "./views/Today";
+import { Assistant } from "./views/Assistant";
 import { GlobalProgress } from "./views/GlobalProgress";
 import { Space } from "./views/Space";
 import { useToasts } from "./lib/store";
@@ -149,6 +149,17 @@ export default function App() {
         e.preventDefault();
         setNewProjectOpen(true);
       }
+      // Escape inside a project (with nothing else focused) = back to Projects.
+      if (
+        e.key === "Escape" &&
+        e.target instanceof HTMLElement &&
+        e.target.tagName === "BODY"
+      ) {
+        const ui = useUi.getState();
+        if (ui.view === "project" && !ui.paletteOpen && !ui.newProjectOpen) {
+          ui.setView("dashboard");
+        }
+      }
       // ⌘Z outside a text field = undo the last file operation.
       if (
         e.metaKey &&
@@ -184,14 +195,14 @@ export default function App() {
         return <Inbox />;
       case "today":
         return <Today />;
+      case "assistant":
+        return <Assistant />;
       case "progress":
         return <GlobalProgress />;
       case "space":
         return <Space />;
       case "settings":
         return <Settings root={root ?? null} />;
-      default:
-        return <Placeholder view={view} />;
     }
   };
 
@@ -200,7 +211,7 @@ export default function App() {
       <TitleBar root={root ?? null} />
       {isLoading ? null : root ? (
         <div className="flex flex-1 overflow-hidden">
-          <IconRail />
+          <Sidebar />
           {content()}
         </div>
       ) : (

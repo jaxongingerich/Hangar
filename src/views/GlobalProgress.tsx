@@ -70,7 +70,6 @@ export function GlobalProgress() {
                 <span className="w-24 shrink-0 font-mono text-[10px] text-muted">
                   {e.ts.slice(0, 16)}
                 </span>
-                <span>{e.project_emoji}</span>
                 <span className="w-32 shrink-0 truncate text-[11px] text-muted">
                   {e.project_name}
                 </span>
@@ -91,7 +90,10 @@ export function GlobalProgress() {
               onClick={() => openProject(r.id)}
               className="flex items-center gap-4 rounded-panel border border-line bg-panel px-4 py-3 text-left transition-colors hover:border-line-strong"
             >
-              <span className="text-[16px]">{r.emoji}</span>
+              <span
+                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                style={{ background: r.color }}
+              />
               <span className="w-44 truncate text-[13px] font-medium">{r.name}</span>
               <ProgressRing value={r.progress} color={HEALTH_COLOR[r.health]} size={34} stroke={3} />
               <div className="h-9 w-28">

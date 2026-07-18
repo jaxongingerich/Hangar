@@ -5,9 +5,10 @@ import { api } from "../lib/api";
 import { useToasts, useUi, View } from "../lib/store";
 
 const VIEWS: { view: View; label: string }[] = [
-  { view: "dashboard", label: "Go to Dashboard" },
+  { view: "dashboard", label: "Go to Projects" },
   { view: "today", label: "Go to Today" },
   { view: "inbox", label: "Go to Inbox" },
+  { view: "assistant", label: "Go to AI" },
   { view: "progress", label: "Go to Progress" },
   { view: "space", label: "Go to Space" },
   { view: "settings", label: "Go to Settings" },
@@ -88,8 +89,7 @@ export function CommandPalette() {
                 close();
               }}
             >
-              <span className="text-solder">▸</span> Set progress to{" "}
-              {progressMatch[1]}%
+              <span className="text-solder">Set progress to {progressMatch[1]}%</span>
             </Item>
           )}
 
@@ -124,7 +124,7 @@ export function CommandPalette() {
                     close();
                   }}
                 >
-                  ＋ New project
+                  New project
                 </Item>
                 <Item
                   onSelect={async () => {
@@ -134,7 +134,7 @@ export function CommandPalette() {
                     close();
                   }}
                 >
-                  ⟳ Rebuild index from disk
+                  Rebuild index from disk
                 </Item>
                 {view === "project" && projectId !== null && (
                   <Item

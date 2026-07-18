@@ -1,31 +1,60 @@
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
-  <!-- Hangar app icon — "Blueprint at night" -->
+  <!-- Hangar app icon — Claude light theme.
+       macOS icon grid: 824px squircle centered with 100px transparent margins.
+       Everything outside the squircle stays fully transparent. -->
   <defs>
     <clipPath id="squircle">
-      <rect x="64" y="64" width="896" height="896" rx="200"/>
+      <rect x="100" y="100" width="824" height="824" rx="185"/>
     </clipPath>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FAF9F5"/>
+      <stop offset="1" stop-color="#F0EEE6"/>
+    </linearGradient>
+    <linearGradient id="arch" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#D97757"/>
+      <stop offset="1" stop-color="#C96442"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#8A5A3C" flood-opacity="0.22"/>
+    </filter>
+    <filter id="archShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#C96442" flood-opacity="0.25"/>
+    </filter>
   </defs>
+
+  <!-- ivory squircle with a soft warm shadow (stays inside the transparent margin) -->
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)" filter="url(#shadow)"/>
+
   <g clip-path="url(#squircle)">
-    <rect x="64" y="64" width="896" height="896" fill="#262624"/>
-    <!-- faint blueprint grid -->
-    <g stroke="#33322f" stroke-width="4">
-      <line x1="64" y1="288" x2="960" y2="288"/>
-      <line x1="64" y1="512" x2="960" y2="512"/>
-      <line x1="64" y1="736" x2="960" y2="736"/>
-      <line x1="288" y1="64" x2="288" y2="960"/>
-      <line x1="512" y1="64" x2="512" y2="960"/>
-      <line x1="736" y1="64" x2="736" y2="960"/>
+    <!-- fine blueprint grid, barely-there warm neutral -->
+    <g stroke="#DEDBD1" stroke-width="2.5">
+      <line x1="100" y1="306" x2="924" y2="306"/>
+      <line x1="100" y1="512" x2="924" y2="512"/>
+      <line x1="306" y1="100" x2="306" y2="924"/>
+      <line x1="512" y1="100" x2="512" y2="924"/>
+      <line x1="718" y1="100" x2="718" y2="924"/>
     </g>
-    <!-- hangar arch: outer teal band -->
-    <path d="M 232 768 L 232 560 A 280 280 0 0 1 792 560 L 792 768 L 704 768 L 704 560 A 192 192 0 0 0 320 560 L 320 768 Z"
-          fill="#D97757"/>
-    <!-- door slot -->
-    <rect x="452" y="596" width="120" height="172" rx="24" fill="#D97757" opacity="0.55"/>
-    <!-- progress tick above the arch -->
-    <circle cx="512" cy="332" r="34" fill="#D97757"/>
-    <!-- baseline -->
-    <rect x="200" y="768" width="624" height="26" rx="13" fill="#43423E"/>
+
+    <!-- concentric echo arcs — the hangar's ribbed roofline radiating outward -->
+    <g fill="none" stroke-linecap="round">
+      <path d="M 116 740 A 396 396 0 0 1 908 740" stroke="#E8E2D4" stroke-width="14"/>
+      <path d="M 190 740 A 322 322 0 0 1 834 740" stroke="#E3D2C3" stroke-width="16"/>
+      <path d="M 262 740 A 250 250 0 0 1 762 740" stroke="#DEB9A4" stroke-width="18"/>
+    </g>
+
+    <!-- main hangar arch in Claude coral -->
+    <path d="M 292 740 L 292 576 A 220 220 0 0 1 732 576 L 732 740 L 654 740 L 654 576 A 142 142 0 0 0 370 576 L 370 740 Z"
+          fill="url(#arch)" filter="url(#archShadow)"/>
+
+    <!-- hangar door -->
+    <path d="M 458 740 L 458 634 Q 458 616 476 616 L 548 616 Q 566 616 566 634 L 566 740 Z"
+          fill="#C96442" opacity="0.38"/>
+
+    <!-- ground line -->
+    <rect x="212" y="740" width="600" height="24" rx="12" fill="#DEDBD1"/>
+    <rect x="212" y="740" width="600" height="24" rx="12" fill="none" stroke="#C9C5B8" stroke-width="2"/>
+
+    <!-- top inner highlight for depth -->
+    <rect x="103" y="103" width="818" height="818" rx="182" fill="none" stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="5"/>
   </g>
-  <!-- hairline edge -->
-  <rect x="66" y="66" width="892" height="892" rx="198" fill="none" stroke="#43423E" stroke-width="4"/>
 </svg>

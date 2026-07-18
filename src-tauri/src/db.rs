@@ -27,6 +27,10 @@ fn migrate(conn: &Connection) -> AppResult<()> {
         conn.execute_batch(SCHEMA_V3)?;
         conn.pragma_update(None, "user_version", 3)?;
     }
+    if version < 4 {
+        conn.execute_batch(SCHEMA_V4)?;
+        conn.pragma_update(None, "user_version", 4)?;
+    }
     Ok(())
 }
 
@@ -282,6 +286,28 @@ CREATE TABLE IF NOT EXISTS op_journal (
   inverse_json TEXT,
   undone INTEGER NOT NULL DEFAULT 0
 );
+"#;
+
+const SCHEMA_V4: &str = r#"
+CREATE TABLE IF NOT EXISTS ai_chats (
+  id INTEGER PRIMARY KEY,
+  title TEXT NOT NULL DEFAULT 'New chat',
+  profile_id TEXT,
+  project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS ai_chat_messages (
+  id INTEGER PRIMARY KEY,
+  chat_id INTEGER NOT NULL REFERENCES ai_chats(id) ON DELETE CASCADE,
+  role TEXT NOT NULL CHECK (role IN ('user','assistant')),
+  content TEXT NOT NULL,
+  provider TEXT,
+  model TEXT,
+  ts TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_ai_chat_messages_chat ON ai_chat_messages(chat_id, id);
 "#;
 
 pub fn get_setting(conn: &Connection, key: &str) -> AppResult<Option<String>> {

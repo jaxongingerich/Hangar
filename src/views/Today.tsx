@@ -55,7 +55,6 @@ export function Today() {
                   key={o.id}
                   className="flex items-center gap-3 border-b border-line/50 bg-panel px-4 py-2.5 last:border-b-0"
                 >
-                  <span className="text-muted">▸</span>
                   <span className="text-[12.5px]">
                     {o.vendor}
                     {o.items ? ` — ${o.items}` : ""}
@@ -79,13 +78,12 @@ export function Today() {
           <section>
             <h2 className="mb-2 text-[13px] font-semibold text-muted">Next best action</h2>
             <div className="overflow-hidden rounded-panel border border-line">
-              {data.suggestions.map(([pid, emoji, name, suggestion]) => (
+              {data.suggestions.map(([pid, , name, suggestion]) => (
                 <button
                   key={pid}
                   onClick={() => openProject(pid)}
                   className="flex w-full items-center gap-3 border-b border-line/50 bg-panel px-4 py-2.5 text-left transition-colors last:border-b-0 hover:bg-panel-2"
                 >
-                  <span>{emoji}</span>
                   <span className="w-36 shrink-0 truncate text-[12px] text-muted">{name}</span>
                   <span className="truncate text-[12.5px]">{suggestion}</span>
                 </button>
@@ -139,7 +137,7 @@ function TaskGroup({
               onClick={() => onOpen(t.project_id)}
               className="text-[11px] text-muted hover:text-solder"
             >
-              {t.project_emoji} {t.project_name}
+              {t.project_name}
             </button>
             {t.due && <span className="font-mono text-[11px] text-muted">{t.due.slice(5)}</span>}
           </div>

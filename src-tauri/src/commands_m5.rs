@@ -64,6 +64,11 @@ pub fn ai_set_key(key: String) -> AppResult<()> {
 }
 
 fn load_provider(conn: &Connection) -> AppResult<Provider> {
+    // Provider profiles (AI tab) take precedence; the legacy single-provider
+    // settings remain as a fallback for configs from older versions.
+    if let Some(p) = crate::commands_m6::load_active_profile_provider(conn) {
+        return Ok(p);
+    }
     let provider = db::get_setting(conn, "ai_provider")?.unwrap_or_else(|| "none".into());
     let model = db::get_setting(conn, "ai_model")?.unwrap_or_default();
     let base = db::get_setting(conn, "ai_base_url")?.unwrap_or_default();
@@ -195,7 +200,7 @@ pub fn ai_usage(state: State<AppState>) -> AppResult<AiUsage> {
 
 // ---------- Context builders ----------
 
-fn project_brief(conn: &Connection, project_id: i64) -> AppResult<String> {
+pub fn project_brief(conn: &Connection, project_id: i64) -> AppResult<String> {
     let (name, status, progress): (String, String, i64) = conn.query_row(
         "SELECT name, status, progress FROM projects WHERE id = ?1",
         [project_id],

@@ -173,7 +173,10 @@ function Usage() {
             className="rounded-panel border border-line bg-panel p-3 text-left transition-colors hover:border-line-strong"
           >
             <div className="mb-1.5 flex items-center gap-2">
-              <span>{p.emoji}</span>
+              <span
+                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                style={{ background: p.color }}
+              />
               <span className="text-[13px] font-medium">{p.name}</span>
               <span className="font-mono text-[11px] text-muted">
                 {formatBytes(p.size_bytes)} · {p.file_count} files

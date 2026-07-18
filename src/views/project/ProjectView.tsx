@@ -58,10 +58,10 @@ export function ProjectView({ projectId }: { projectId: number }) {
           ←
         </button>
         <span
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-[18px]"
-          style={{ background: `${project.color}1F` }}
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-[15px] font-semibold"
+          style={{ background: `${project.color}1F`, color: project.color }}
         >
-          {project.emoji}
+          {project.name.charAt(0).toUpperCase()}
         </span>
         <InlineName
           value={project.name}

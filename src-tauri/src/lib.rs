@@ -4,6 +4,7 @@ pub mod commands_m2;
 pub mod commands_m3;
 pub mod commands_m4;
 pub mod commands_m5;
+pub mod commands_m6;
 pub mod ai;
 pub mod mcp;
 pub mod db;
@@ -174,11 +175,19 @@ pub fn run() {
             }
 
             // MCP server so Claude Code / Desktop can drive Hangar.
+            // Off by a Settings toggle for standalone installs that don't use it.
             {
                 let state = app.state::<AppState>();
                 let conn = state.conn.lock().unwrap();
-                if let Ok(token) = mcp::ensure_token(&conn) {
-                    mcp::start(app.handle().clone(), state.db_path.clone(), token);
+                let enabled = db::get_setting(&conn, "mcp_enabled")
+                    .ok()
+                    .flatten()
+                    .map(|v| v != "0")
+                    .unwrap_or(true);
+                if enabled {
+                    if let Ok(token) = mcp::ensure_token(&conn) {
+                        mcp::start(app.handle().clone(), state.db_path.clone(), token);
+                    }
                 }
             }
 
@@ -295,6 +304,22 @@ pub fn run() {
             commands_m5::ai_weekly_digest,
             commands_m5::ai_smart_rename,
             commands_m5::ai_project_chat,
+            commands_m6::ai_list_profiles,
+            commands_m6::ai_save_profile,
+            commands_m6::ai_delete_profile,
+            commands_m6::ai_activate_profile,
+            commands_m6::ai_set_profile_key,
+            commands_m6::ai_list_chats,
+            commands_m6::ai_new_chat,
+            commands_m6::ai_update_chat,
+            commands_m6::ai_delete_chat,
+            commands_m6::ai_chat_history,
+            commands_m6::ai_chat_send,
+            commands_m6::read_text_file,
+            commands_m6::suggest_imports,
+            commands_m6::ai_detect_providers,
+            commands_m6::mcp_get_enabled,
+            commands_m6::mcp_set_enabled,
             mcp_info,
         ])
         .run(tauri::generate_context!())

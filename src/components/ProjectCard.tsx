@@ -25,10 +25,13 @@ export function ProjectCard({
       <div className="flex min-w-0 flex-1 flex-col gap-3">
         <div className="flex items-center gap-2.5">
           <span
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[16px]"
-            style={{ background: `color-mix(in srgb, ${project.color} 14%, transparent)` }}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[14px] font-semibold"
+            style={{
+              background: `color-mix(in srgb, ${project.color} 14%, transparent)`,
+              color: project.color,
+            }}
           >
-            {project.emoji}
+            {project.name.charAt(0).toUpperCase()}
           </span>
           <span className="truncate text-[14px] font-semibold">
             {project.name}

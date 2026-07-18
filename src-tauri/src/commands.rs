@@ -120,10 +120,15 @@ pub fn list_projects(state: State<AppState>) -> AppResult<Vec<ProjectCard>> {
     Ok(cards)
 }
 
+// Default bins are intentionally general — every project gets these. Specialized
+// hardware bins (Gerbers, BOM, JLCPCB…) are one click away via "New bin" or the
+// Hardware template, so projects don't start cluttered with folders they may
+// never use.
+const GENERAL_BINS: &[&str] = &["Docs", "Files", "Photos", "Notes", "Exports"];
 const HARDWARE_BINS: &[&str] = &[
-    "Gerbers", "JLCPCB", "Firmware", "CAD", "Datasheets", "BOM", "Photos", "Docs",
+    "Docs", "Files", "Photos", "Firmware", "CAD", "Gerbers", "BOM",
 ];
-const SOFTWARE_BINS: &[&str] = &["Design", "Assets", "Research", "Exports", "Docs"];
+const SOFTWARE_BINS: &[&str] = &["Docs", "Design", "Assets", "Research", "Exports"];
 
 #[tauri::command]
 pub fn create_project(
@@ -147,12 +152,14 @@ pub fn create_project(
     std::fs::create_dir_all(&dir)?;
 
     let bins: &[&str] = match template.as_deref() {
+        Some("hardware") => HARDWARE_BINS,
         Some("software") => SOFTWARE_BINS,
         Some("mixed") => &[
-            "Gerbers", "JLCPCB", "Firmware", "CAD", "Datasheets", "BOM", "Photos",
-            "Design", "Assets", "Docs",
+            "Docs", "Files", "Photos", "Notes", "Exports",
+            "Firmware", "CAD", "Gerbers", "BOM", "Design", "Assets",
         ],
-        _ => HARDWARE_BINS,
+        // "general" and anything unspecified get the clean, general set.
+        _ => GENERAL_BINS,
     };
     for bin in bins {
         std::fs::create_dir_all(dir.join(bin))?;

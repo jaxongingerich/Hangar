@@ -236,15 +236,20 @@ fn call_tool(state: &McpState, name: &str, args: &Value) -> AppResult<Value> {
             if name.is_empty() {
                 return Err(crate::error::AppError::msg("name required"));
             }
-            let template = args["template"].as_str().unwrap_or("hardware");
+            let template = args["template"].as_str().unwrap_or("general");
             let dir = root.join(&name);
             if dir.exists() {
                 return Err(crate::error::AppError::msg("already exists"));
             }
             std::fs::create_dir_all(&dir)?;
             let bins: &[&str] = match template {
-                "software" => &["Design", "Assets", "Research", "Exports", "Docs"],
-                _ => &["Gerbers", "JLCPCB", "Firmware", "CAD", "Datasheets", "BOM", "Photos", "Docs"],
+                "hardware" => &["Docs", "Files", "Photos", "Firmware", "CAD", "Gerbers", "BOM"],
+                "software" => &["Docs", "Design", "Assets", "Research", "Exports"],
+                "mixed" => &[
+                    "Docs", "Files", "Photos", "Notes", "Exports",
+                    "Firmware", "CAD", "Gerbers", "BOM", "Design", "Assets",
+                ],
+                _ => &["Docs", "Files", "Photos", "Notes", "Exports"],
             };
             for b in bins {
                 std::fs::create_dir_all(dir.join(b))?;

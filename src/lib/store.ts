@@ -34,6 +34,7 @@ export type View =
   | "dashboard"
   | "today"
   | "inbox"
+  | "assistant"
   | "progress"
   | "space"
   | "settings"

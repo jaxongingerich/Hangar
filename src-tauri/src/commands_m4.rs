@@ -463,15 +463,18 @@ pub fn import_files(
     let mut imported = 0usize;
     for p in &paths {
         let src = PathBuf::from(p);
-        if !src.is_file() {
-            continue;
-        }
         let Some(name) = src.file_name().map(|n| n.to_string_lossy().to_string()) else {
             continue;
         };
-        let final_name = ops::dedupe_name(&dest_dir, &name);
-        std::fs::copy(&src, dest_dir.join(&final_name))?;
-        imported += 1;
+        if src.is_file() {
+            let final_name = ops::dedupe_name(&dest_dir, &name);
+            std::fs::copy(&src, dest_dir.join(&final_name))?;
+            imported += 1;
+        } else if src.is_dir() {
+            // Copy the whole folder tree (still copy-never-move).
+            let final_name = ops::dedupe_name(&dest_dir, &name);
+            imported += copy_dir_recursive(&src, &dest_dir.join(&final_name))?;
+        }
     }
     if imported > 0 {
         if let Some(pid) = project_id {
@@ -486,6 +489,28 @@ pub fn import_files(
         scan::scan(&mut conn, &root)?;
     }
     Ok(imported)
+}
+
+/// Copy a directory tree, returning how many files landed. Hidden files are
+/// skipped so .DS_Store and friends don't pollute the library.
+fn copy_dir_recursive(src: &PathBuf, dest: &PathBuf) -> AppResult<usize> {
+    std::fs::create_dir_all(dest)?;
+    let mut count = 0usize;
+    for entry in std::fs::read_dir(src)?.flatten() {
+        let name = entry.file_name().to_string_lossy().to_string();
+        if name.starts_with('.') {
+            continue;
+        }
+        let from = entry.path();
+        let to = dest.join(&name);
+        if from.is_dir() {
+            count += copy_dir_recursive(&from, &to)?;
+        } else if from.is_file() {
+            std::fs::copy(&from, &to)?;
+            count += 1;
+        }
+    }
+    Ok(count)
 }
 
 // ---------- Gerber preview support ----------

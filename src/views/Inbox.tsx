@@ -23,6 +23,10 @@ export function Inbox() {
     queryKey: ["inbox", targetProject],
     queryFn: () => api.listInbox(targetProject),
   });
+  const { data: suggestions } = useQuery({
+    queryKey: ["importSuggestions"],
+    queryFn: api.suggestImports,
+  });
   const { data: detail } = useQuery({
     queryKey: ["project", targetProject],
     queryFn: () => api.getProject(targetProject!),
@@ -80,7 +84,7 @@ export function Inbox() {
           >
             {(projects ?? []).map((p) => (
               <option key={p.id} value={p.id}>
-                {p.emoji} {p.name}
+                {p.name}
               </option>
             ))}
           </select>
@@ -97,6 +101,24 @@ export function Inbox() {
             className="rounded-lg border border-line px-3.5 py-1.5 text-[12px] font-medium text-muted transition-colors hover:border-solder hover:text-solder"
           >
             Import files…
+          </button>
+          <button
+            onClick={async () => {
+              const { open } = await import("@tauri-apps/plugin-dialog");
+              const picked = await open({
+                directory: true,
+                multiple: true,
+                title: "Import folders to Inbox",
+              });
+              if (!picked) return;
+              const paths = Array.isArray(picked) ? picked : [picked];
+              const n = await api.importFiles(paths, null, null);
+              push(`Imported ${n} item${n === 1 ? "" : "s"} → Inbox`);
+              qc.invalidateQueries({ queryKey: ["inbox"] });
+            }}
+            className="rounded-lg border border-line px-3.5 py-1.5 text-[12px] font-medium text-muted transition-colors hover:border-solder hover:text-solder"
+          >
+            Import folder…
           </button>
           <button
             onClick={fileAll}
@@ -155,6 +177,57 @@ export function Inbox() {
       )}
 
       <div className="flex-1 overflow-y-auto px-6 pb-6">
+        {(suggestions ?? []).length > 0 && (
+          <div className="mb-5">
+            <div className="mb-2 flex items-center gap-2">
+              <h2 className="text-[13px] font-semibold">Suggested imports</h2>
+              <span className="text-[11px] text-muted">
+                recent files from Downloads, Desktop and watched folders
+              </span>
+              <button
+                onClick={async () => {
+                  const n = await api.importFiles(
+                    (suggestions ?? []).map((s) => s.path),
+                    null,
+                    null,
+                  );
+                  push(`Imported ${n} file${n === 1 ? "" : "s"} → Inbox`);
+                  qc.invalidateQueries();
+                }}
+                className="ml-auto rounded-md border border-line px-2.5 py-1 text-[11px] font-medium text-muted transition-colors hover:border-solder hover:text-solder"
+              >
+                Import all
+              </button>
+            </div>
+            <div className="overflow-hidden rounded-panel border border-line">
+              {(suggestions ?? []).map((s) => (
+                <div
+                  key={s.path}
+                  className="flex items-center gap-3 border-b border-line/50 bg-panel px-4 py-2 last:border-b-0"
+                >
+                  <span className="min-w-0 flex-1 truncate text-[12.5px]">{s.name}</span>
+                  <span className="font-mono text-[11px] text-muted">{s.source}</span>
+                  <span className="font-mono text-[11px] text-muted">
+                    {formatBytes(s.size)}
+                  </span>
+                  <span className="w-16 text-right font-mono text-[11px] text-muted">
+                    {formatAgo(s.mtime)}
+                  </span>
+                  <button
+                    onClick={async () => {
+                      const n = await api.importFiles([s.path], null, null);
+                      push(`Imported ${n === 1 ? s.name : `${n} files`} → Inbox`);
+                      qc.invalidateQueries();
+                    }}
+                    className="rounded-md border border-line px-2.5 py-1 text-[11px] font-medium text-muted transition-colors hover:border-solder hover:text-solder"
+                  >
+                    Import
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         {!items || items.length === 0 ? (
           <div className="mx-auto mt-16 max-w-[380px] text-center">
             <div className="mb-3 flex justify-center text-muted"><Icon glyph="inbox" size={28} /></div>

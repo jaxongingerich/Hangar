@@ -5,15 +5,16 @@ import { api } from "../lib/api";
 import { useUi } from "../lib/store";
 
 const TEMPLATES = [
-  { id: "hardware", label: "Hardware", desc: "Gerbers · JLCPCB · Firmware · CAD · BOM…" },
-  { id: "software", label: "Software", desc: "Design · Assets · Research · Exports · Docs" },
-  { id: "mixed", label: "Mixed", desc: "Everything — hardware + software bins" },
+  { id: "general", label: "General", desc: "Docs · Files · Photos · Notes · Exports" },
+  { id: "hardware", label: "Hardware", desc: "Adds Firmware · CAD · Gerbers · BOM" },
+  { id: "software", label: "Software", desc: "Docs · Design · Assets · Research · Exports" },
+  { id: "mixed", label: "Mixed", desc: "Everything — general + hardware + software" },
 ];
 
 export function NewProjectModal() {
   const { newProjectOpen, setNewProjectOpen } = useUi();
   const [name, setName] = useState("");
-  const [template, setTemplate] = useState("hardware");
+  const [template, setTemplate] = useState("general");
   const [error, setError] = useState<string | null>(null);
   const qc = useQueryClient();
 

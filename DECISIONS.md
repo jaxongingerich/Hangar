@@ -2,7 +2,20 @@
 
 Judgment calls made while building Hangar, newest first.
 
-## M4
+## 1.0 polish
+
+- **App icon rebuilt on the Apple icon grid.** The old 1024px source rendered
+  flattened onto opaque white, so Finder/Dock showed a white plate around the
+  squircle. New `source.svg` uses the standard 824px squircle with 100px
+  transparent margins, a baked drop shadow, and a subtle background gradient;
+  all sizes regenerate via `tauri icon` from a sharp-rendered PNG.
+- **Nav rail gained labels + ⌘1–⌘6.** Icon-only navigation forced tooltip
+  hunting; 9.5px labels under each icon plus number shortcuts make the six
+  sections self-evident. "Dashboard" is labeled "Projects" — that is what it
+  shows. The rail stays lit on Projects while inside a project, and Escape
+  returns there.
+- **Version bumped to 1.0.0** for the first packaged release; Placeholder view
+  deleted (every view is implemented, the route was dead code).
 
 - **Multi-root (F22) deferred to post-v1.** Every file mutation is
   root-guarded; making that "any of N roots" safely touches all ops and the

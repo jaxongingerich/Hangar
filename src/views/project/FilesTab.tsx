@@ -206,18 +206,44 @@ export function FilesTab({ project }: { project: ProjectDetail }) {
             + New bin
           </button>
         ) : (
-          <input
-            autoFocus
-            value={newBin}
-            onChange={(e) => setNewBin(e.target.value)}
-            onBlur={() => setNewBin(null)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && newBin.trim()) createBin.mutate(newBin.trim());
-              if (e.key === "Escape") setNewBin(null);
-            }}
-            placeholder="Bin name"
-            className="mt-1 rounded-md border border-solder bg-panel-2 px-2 py-1.5 text-[12px] focus:outline-none"
-          />
+          <div className="mt-1">
+            <input
+              autoFocus
+              value={newBin}
+              onChange={(e) => setNewBin(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && newBin.trim()) createBin.mutate(newBin.trim());
+                if (e.key === "Escape") setNewBin(null);
+              }}
+              placeholder="Bin name — or pick one below"
+              className="w-full rounded-md border border-solder bg-panel-2 px-2 py-1.5 text-[12px] focus:outline-none"
+            />
+            {(() => {
+              const have = new Set(
+                project.bins.map((b) => b.name.toLowerCase()),
+              );
+              const suggestions = [
+                "Gerbers", "BOM", "JLCPCB", "Firmware", "CAD",
+                "Datasheets", "Schematic", "3D Models", "Design", "Assets",
+              ].filter((s) => !have.has(s.toLowerCase()));
+              return suggestions.length ? (
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {suggestions.map((s) => (
+                    <button
+                      key={s}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        createBin.mutate(s);
+                      }}
+                      className="rounded-full border border-line px-2 py-0.5 text-[11px] text-muted transition-colors hover:border-solder hover:text-solder"
+                    >
+                      + {s}
+                    </button>
+                  ))}
+                </div>
+              ) : null;
+            })()}
+          </div>
         )}
       </aside>
 

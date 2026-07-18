@@ -20,6 +20,21 @@ export function TitleBar({ root }: { root: string | null }) {
       data-tauri-drag-region
       className="flex h-12 shrink-0 items-center border-b border-line bg-ink pl-[84px] pr-3"
     >
+      <svg
+        data-tauri-drag-region
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="var(--accent)"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        className="mr-2 shrink-0"
+        aria-hidden
+      >
+        <path d="M4 19v-6a8 8 0 0 1 16 0v6" />
+        <path d="M3 19h18" />
+      </svg>
       <span data-tauri-drag-region className="text-[13px] font-semibold">
         Hangar
       </span>
