@@ -110,6 +110,13 @@ cargo test --manifest-path src-tauri/Cargo.toml
 npx vitest run
 ```
 
+## Support Hangar
+
+Hangar is free for noncommercial use and built by one person. If it's useful to
+you, [sponsoring the project](https://github.com/sponsors/jaxongingerich) helps
+fund continued development — new features, bug fixes, and eventually proper Apple
+notarization so the app installs without the Gatekeeper warning.
+
 ## License
 
 [The Prosperity Public License 3.0.0](LICENSE) — source-available, **free for
