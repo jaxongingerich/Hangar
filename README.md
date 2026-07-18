@@ -109,3 +109,17 @@ symlink.
 cargo test --manifest-path src-tauri/Cargo.toml
 npx vitest run
 ```
+
+## License
+
+[The Prosperity Public License 3.0.0](LICENSE) — source-available, **free for
+noncommercial use**, with a thirty-day trial for commercial use. Personal
+projects, hobby work, research, education, and charitable, public-safety, and
+government organizations are all noncommercial under this license. Contributing
+changes back doesn't count as commercial use either.
+
+If you want to use Hangar commercially beyond the trial, contact me for a
+license.
+
+Note that this is a *source-available* license, not an OSI-approved open source
+one — it restricts commercial use by design.
