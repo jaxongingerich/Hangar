@@ -290,6 +290,8 @@ pub struct ChatRow {
     pub project_name: Option<String>,
     pub message_count: i64,
     pub updated_at: String,
+    /// "hangar" for chats started in the app, else the importer it came from.
+    pub source: String,
 }
 
 #[derive(Serialize)]
@@ -308,7 +310,7 @@ pub fn ai_list_chats(state: State<AppState>) -> AppResult<Vec<ChatRow>> {
     let mut stmt = conn.prepare(
         "SELECT c.id, c.title, c.profile_id, c.project_id, p.name,
                 (SELECT COUNT(*) FROM ai_chat_messages m WHERE m.chat_id = c.id),
-                c.updated_at
+                c.updated_at, c.source
          FROM ai_chats c LEFT JOIN projects p ON p.id = c.project_id
          ORDER BY c.updated_at DESC",
     )?;
@@ -322,6 +324,7 @@ pub fn ai_list_chats(state: State<AppState>) -> AppResult<Vec<ChatRow>> {
                 project_name: r.get(4)?,
                 message_count: r.get(5)?,
                 updated_at: r.get(6)?,
+                source: r.get(7)?,
             })
         })?
         .filter_map(|r| r.ok())
@@ -816,4 +819,102 @@ pub fn mcp_get_enabled(state: State<AppState>) -> AppResult<bool> {
 pub fn mcp_set_enabled(state: State<AppState>, enabled: bool) -> AppResult<()> {
     let conn = state.conn.lock().unwrap();
     db::set_setting(&conn, "mcp_enabled", if enabled { "1" } else { "0" })
+}
+
+// ------------------------------------------------------- importing past chats
+
+/// List conversations found on this Mac that Hangar can pull in. Sessions
+/// already imported come back flagged rather than hidden, so the UI can show
+/// what's connected instead of silently dropping them.
+#[tauri::command]
+pub fn ai_discover_sessions(
+    state: State<AppState>,
+) -> AppResult<Vec<crate::import::DiscoveredSession>> {
+    let conn = state.conn.lock().unwrap();
+    crate::import::discover_sessions(&conn)
+}
+
+#[tauri::command]
+pub fn ai_import_sessions(
+    state: State<AppState>,
+    sessions: Vec<crate::import::DiscoveredSession>,
+    profile_id: Option<String>,
+) -> AppResult<crate::import::ImportSummary> {
+    let mut conn = state.conn.lock().unwrap();
+    crate::import::import_sessions(&mut conn, &sessions, profile_id.as_deref())
+}
+
+/// Import a `conversations.json` from a Claude or ChatGPT data export — the
+/// supported way to get cloud conversations in, since neither desktop app
+/// stores them locally and neither vendor exposes a history API.
+#[tauri::command]
+pub fn ai_import_export_file(
+    state: State<AppState>,
+    path: String,
+    profile_id: Option<String>,
+) -> AppResult<crate::import::ImportSummary> {
+    let mut conn = state.conn.lock().unwrap();
+    crate::import::import_export_file(
+        &mut conn,
+        std::path::Path::new(&path),
+        profile_id.as_deref(),
+    )
+}
+
+/// What Hangar knows about a CLI bridge it could install for the user.
+#[derive(serde::Serialize)]
+pub struct CliBridgeStatus {
+    pub command: String,
+    pub installed: bool,
+    /// True when the tool's own data directory exists — meaning the desktop app
+    /// is in use and installing the CLI would light up its history.
+    pub has_history: bool,
+    pub install_hint: String,
+}
+
+#[tauri::command]
+pub fn ai_cli_bridge_status() -> Vec<CliBridgeStatus> {
+    let home = std::env::var("HOME").unwrap_or_default();
+    vec![
+        CliBridgeStatus {
+            installed: crate::ai::which_bin("codex").is_some(),
+            has_history: std::path::Path::new(&format!("{home}/.codex/sessions")).exists(),
+            command: "codex".into(),
+            install_hint: "npm install -g @openai/codex".into(),
+        },
+        CliBridgeStatus {
+            installed: crate::ai::which_bin("claude").is_some(),
+            has_history: std::path::Path::new(&format!("{home}/.claude/projects")).exists(),
+            command: "claude".into(),
+            install_hint: "npm install -g @anthropic-ai/claude-code".into(),
+        },
+    ]
+}
+
+/// Install a CLI bridge on the user's behalf. Only the two known bridges are
+/// installable — the command is not built from caller-supplied text, so this
+/// can't be turned into arbitrary shell execution.
+#[tauri::command]
+pub async fn ai_install_cli_bridge(command: String) -> AppResult<String> {
+    let pkg = match command.as_str() {
+        "codex" => "@openai/codex",
+        "claude" => "@anthropic-ai/claude-code",
+        other => return Err(AppError::msg(format!("unknown CLI bridge: {other}"))),
+    };
+    let npm = crate::ai::which_bin("npm")
+        .ok_or_else(|| AppError::msg("npm isn't installed — install Node.js first, then retry"))?;
+
+    let out = tokio::process::Command::new(npm)
+        .args(["install", "-g", pkg])
+        .env("PATH", crate::ai::user_path())
+        .output()
+        .await
+        .map_err(|e| AppError::msg(format!("couldn't run npm: {e}")))?;
+
+    if !out.status.success() {
+        let err = String::from_utf8_lossy(&out.stderr);
+        let tail: String = err.lines().rev().take(4).collect::<Vec<_>>().join("\n");
+        return Err(AppError::msg(format!("npm install failed:\n{tail}")));
+    }
+    Ok(format!("{command} installed"))
 }

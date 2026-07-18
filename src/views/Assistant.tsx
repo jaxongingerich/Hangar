@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, AiProfile, ChatMessageRow, DetectedProvider } from "../lib/api";
 import { useToasts } from "../lib/store";
+import { ImportPanel, sourceLabel } from "./ai/ImportPanel";
 
 /** Presets so adding a provider is one pick + (usually) one key. */
 const PRESETS: {
@@ -42,6 +43,7 @@ export function Assistant() {
   const [chatId, setChatId] = useState<number | null>(null);
   const [profileId, setProfileId] = useState<string | null>(null);
   const [managing, setManaging] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   const { data: profiles } = useQuery({
     queryKey: ["aiProfiles"],
@@ -72,6 +74,20 @@ export function Assistant() {
   const chat = chats?.find((c) => c.id === chatId) ?? null;
   const noProfiles = (profiles ?? []).length === 0;
 
+  // Group the sidebar by where each chat came from, so imported Claude Code and
+  // Codex conversations sit under their own headings instead of being mixed in
+  // with chats started here. Chats started in Hangar always come first.
+  const groupedChats = (() => {
+    const m = new Map<string, typeof chats>();
+    for (const c of chats ?? []) {
+      const src = c.source ?? "hangar";
+      m.set(src, [...(m.get(src) ?? []), c] as typeof chats);
+    }
+    return [...m.entries()].sort(([a], [b]) =>
+      a === "hangar" ? -1 : b === "hangar" ? 1 : a.localeCompare(b),
+    );
+  })();
+
   return (
     <div className="flex flex-1 overflow-hidden">
       {/* Chat list */}
@@ -88,25 +104,38 @@ export function Assistant() {
               No chats yet. Start one — every conversation is saved here.
             </p>
           ) : (
-            (chats ?? []).map((c) => (
-              <button
-                key={c.id}
-                onClick={() => {
-                  setChatId(c.id);
-                  setManaging(false);
-                }}
-                className={`group mb-0.5 block w-full rounded-md px-2.5 py-2 text-left transition-colors ${
-                  c.id === chatId ? "bg-panel-2" : "hover:bg-panel"
-                }`}
-              >
-                <div className="truncate text-[12.5px] font-medium">{c.title}</div>
-                <div className="mt-0.5 flex items-center gap-2 text-[10.5px] text-muted">
-                  {c.project_name && (
-                    <span className="truncate">{c.project_name}</span>
-                  )}
-                  <span className="shrink-0">{c.message_count} msgs</span>
-                </div>
-              </button>
+            groupedChats.map(([source, list]) => (
+              <div key={source} className="mb-2">
+                {/* Only label groups once there's more than one source in play. */}
+                {groupedChats.length > 1 && (
+                  <div className="mb-1 px-2.5 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted">
+                    {sourceLabel(source)}
+                  </div>
+                )}
+                {(list ?? []).map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => {
+                      setChatId(c.id);
+                      setManaging(false);
+                      setImporting(false);
+                    }}
+                    className={`group mb-0.5 block w-full rounded-md px-2.5 py-2 text-left transition-colors ${
+                      c.id === chatId ? "bg-panel-2" : "hover:bg-panel"
+                    }`}
+                  >
+                    <div className="truncate text-[12.5px] font-medium">
+                      {c.title}
+                    </div>
+                    <div className="mt-0.5 flex items-center gap-2 text-[10.5px] text-muted">
+                      {c.project_name && (
+                        <span className="truncate">{c.project_name}</span>
+                      )}
+                      <span className="shrink-0">{c.message_count} msgs</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
             ))
           )}
         </div>
@@ -156,7 +185,20 @@ export function Assistant() {
           )}
           <div className="ml-auto flex items-center gap-1.5">
             <button
-              onClick={() => setManaging((m) => !m)}
+              onClick={() => {
+                setImporting((v) => !v);
+                setManaging(false);
+              }}
+              className={importing ? primaryBtn : ghostBtn}
+              title="Pull in past conversations from Claude Code, Codex, or a Claude/ChatGPT export"
+            >
+              {importing ? "Back to chat" : "Import chats"}
+            </button>
+            <button
+              onClick={() => {
+                setManaging((m) => !m);
+                setImporting(false);
+              }}
               className={managing ? primaryBtn : ghostBtn}
             >
               {managing ? "Back to chat" : "Manage AIs"}
@@ -164,7 +206,14 @@ export function Assistant() {
           </div>
         </div>
 
-        {managing || noProfiles ? (
+        {importing ? (
+          <ImportPanel
+            profileId={profileId}
+            onImported={() => {
+              qc.invalidateQueries({ queryKey: ["aiChats"] });
+            }}
+          />
+        ) : managing || noProfiles ? (
           <ProviderManager
             profiles={profiles ?? []}
             onDone={() => setManaging(false)}
@@ -533,6 +582,15 @@ export function ChatThread({
   const { push } = useToasts();
   const [draft, setDraft] = useState("");
   const [attachments, setAttachments] = useState<{ name: string; content: string }[]>([]);
+  // "Bring context" lets you carry an earlier conversation (with any files that
+  // were attached in it) into this one — including across different AIs, since
+  // the transcript is plain text by the time it moves.
+  const [pickingContext, setPickingContext] = useState(false);
+  const { data: allChats } = useQuery({
+    queryKey: ["aiChats"],
+    queryFn: api.aiListChats,
+    enabled: pickingContext,
+  });
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const { data: messages } = useQuery({
@@ -649,6 +707,26 @@ export function ChatThread({
       )
       .join("\n\n---\n\n");
 
+  /** Pull another chat's transcript into this composer as quoted context. */
+  const bringContext = async (fromId: number, title: string) => {
+    try {
+      const history = await api.aiChatHistory(fromId);
+      if (history.length === 0) {
+        push("That chat has no messages yet", "error");
+        return;
+      }
+      const body = history
+        .map((m) => `${m.role === "user" ? "Me" : "AI"}: ${m.content}`)
+        .join("\n\n");
+      const block = `Context from an earlier conversation ("${title}"):\n\n${body}\n\n---\n\n`;
+      setDraft((d) => block + d);
+      setPickingContext(false);
+      push(`Brought ${history.length} messages from "${title}"`);
+    } catch (e) {
+      push(String(e), "error");
+    }
+  };
+
   const providerLabel = (m: ChatMessageRow) => {
     const p = profiles.find(
       (p) => p.model === m.model || p.provider === m.provider,
@@ -687,6 +765,45 @@ export function ChatThread({
           <div ref={bottomRef} />
         </div>
       </div>
+
+      {pickingContext && (
+        <div className="border-t border-line bg-panel px-5 py-3">
+          <div className="mb-1.5 flex items-center gap-2">
+            <span className="text-[11.5px] font-medium">
+              Bring an earlier conversation into this chat
+            </span>
+            <button
+              onClick={() => setPickingContext(false)}
+              className="ml-auto text-[11px] text-muted hover:text-text"
+            >
+              Cancel
+            </button>
+          </div>
+          <div className="max-h-[180px] overflow-y-auto">
+            {(allChats ?? []).filter((c) => c.id !== chatId).length === 0 ? (
+              <p className="py-2 text-[11.5px] text-muted">
+                No other chats yet. Import past conversations to pull context
+                from them.
+              </p>
+            ) : (
+              (allChats ?? [])
+                .filter((c) => c.id !== chatId)
+                .map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => bringContext(c.id, c.title)}
+                    className="mb-0.5 block w-full rounded-md px-2.5 py-1.5 text-left hover:bg-panel-2"
+                  >
+                    <span className="block truncate text-[12px]">{c.title}</span>
+                    <span className="text-[10.5px] text-muted">
+                      {sourceLabel(c.source)} · {c.message_count} msgs
+                    </span>
+                  </button>
+                ))
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="border-t border-line px-5 py-3">
         <div className="mx-auto max-w-[720px]">
@@ -738,6 +855,13 @@ export function ChatThread({
               </button>
               <button onClick={pasteContext} className={ghostBtn} title="Attach whatever's on your clipboard">
                 Paste context
+              </button>
+              <button
+                onClick={() => setPickingContext((v) => !v)}
+                className={ghostBtn}
+                title="Carry an earlier conversation into this one — works across different AIs"
+              >
+                Bring context
               </button>
             </div>
           </div>

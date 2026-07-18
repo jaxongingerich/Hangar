@@ -498,6 +498,15 @@ export const api = {
     invoke<ChatMessageRow[]>("ai_chat_history", { chatId }),
   aiChatSend: (chatId: number, content: string, profileId: string) =>
     invoke<ChatMessageRow>("ai_chat_send", { chatId, content, profileId }),
+  aiDiscoverSessions: () =>
+    invoke<DiscoveredSession[]>("ai_discover_sessions"),
+  aiImportSessions: (sessions: DiscoveredSession[], profileId: string | null) =>
+    invoke<ImportSummary>("ai_import_sessions", { sessions, profileId }),
+  aiImportExportFile: (path: string, profileId: string | null) =>
+    invoke<ImportSummary>("ai_import_export_file", { path, profileId }),
+  aiCliBridgeStatus: () => invoke<CliBridgeStatus[]>("ai_cli_bridge_status"),
+  aiInstallCliBridge: (command: string) =>
+    invoke<string>("ai_install_cli_bridge", { command }),
   readTextFile: (path: string) =>
     invoke<{ name: string; content: string; truncated: boolean }>(
       "read_text_file",
@@ -556,6 +565,35 @@ export interface ChatRow {
   project_name: string | null;
   message_count: number;
   updated_at: string;
+  /** "hangar" for chats started here, else the importer id it came from. */
+  source?: string;
+}
+
+/** A past conversation found on this Mac that Hangar can pull in. */
+export interface DiscoveredSession {
+  id: string;
+  source: string;
+  title: string;
+  path: string;
+  cwd: string | null;
+  message_count: number;
+  started_at: string;
+  imported: boolean;
+}
+
+export interface ImportSummary {
+  imported: number;
+  skipped: number;
+  messages: number;
+  errors: string[];
+}
+
+export interface CliBridgeStatus {
+  command: string;
+  installed: boolean;
+  /** The tool's data directory exists, so installing the CLI unlocks history. */
+  has_history: boolean;
+  install_hint: string;
 }
 
 export interface ChatMessageRow {

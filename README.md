@@ -38,6 +38,18 @@ See `SPEC.md` for the full product spec and `DECISIONS.md` for judgment calls.
     OpenAI-compatible server. Keys live in the macOS Keychain.
   Saved chats, per-project context, file attachments, and mid-conversation
   model switching — the whole history carries over between AIs.
+- **Import past conversations** — pulls in chats you already had elsewhere and
+  groups them by where they came from:
+  - **Claude Code** (`~/.claude/projects`) and **Codex** (`~/.codex/sessions`,
+    which is also where the Codex *Desktop* app writes) are read straight off
+    disk. Imports are deduped by session id, so re-importing is safe.
+  - **Claude / ChatGPT app conversations** come in via each service's official
+    data export — request it in their settings, then load the
+    `conversations.json`. Those apps keep conversations server-side and neither
+    vendor offers a history API, so an export is the only supported route.
+  - Imported chats are matched to the project whose folder they ran in.
+- **Bring context** — carry any earlier conversation into a new one, including
+  across different AIs, so you can hand a Claude thread to Codex and keep going.
 - **AI actions** — filing, summaries, milestones, renames. Every action is
   plan → approve → execute, never destructive.
 - **MCP server** — optional (Settings toggle): `http://127.0.0.1:41748/mcp`

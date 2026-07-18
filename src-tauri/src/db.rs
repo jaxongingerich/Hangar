@@ -31,6 +31,10 @@ fn migrate(conn: &Connection) -> AppResult<()> {
         conn.execute_batch(SCHEMA_V4)?;
         conn.pragma_update(None, "user_version", 4)?;
     }
+    if version < 5 {
+        conn.execute_batch(SCHEMA_V5)?;
+        conn.pragma_update(None, "user_version", 5)?;
+    }
     Ok(())
 }
 
@@ -308,6 +312,22 @@ CREATE TABLE IF NOT EXISTS ai_chat_messages (
   ts TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_ai_chat_messages_chat ON ai_chat_messages(chat_id, id);
+"#;
+
+// V5 adds provenance to chats so imported sessions can be grouped by where they
+// came from and, crucially, re-imported without creating duplicates.
+//
+// `source` is 'hangar' for chats started in the app, or the importer id
+// ('claude-code', 'codex') for sessions read off disk. `external_id` is the
+// upstream session UUID — the UNIQUE index on it is what makes importing
+// idempotent, so a user can hit "Import" as often as they like.
+const SCHEMA_V5: &str = r#"
+ALTER TABLE ai_chats ADD COLUMN source TEXT NOT NULL DEFAULT 'hangar';
+ALTER TABLE ai_chats ADD COLUMN external_id TEXT;
+ALTER TABLE ai_chats ADD COLUMN source_path TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_chats_external
+  ON ai_chats(source, external_id) WHERE external_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_ai_chats_source ON ai_chats(source, updated_at DESC);
 "#;
 
 pub fn get_setting(conn: &Connection, key: &str) -> AppResult<Option<String>> {

@@ -6,6 +6,7 @@ pub mod commands_m4;
 pub mod commands_m5;
 pub mod commands_m6;
 pub mod ai;
+pub mod import;
 pub mod mcp;
 pub mod db;
 pub mod error;
@@ -318,6 +319,11 @@ pub fn run() {
             commands_m6::read_text_file,
             commands_m6::suggest_imports,
             commands_m6::ai_detect_providers,
+            commands_m6::ai_discover_sessions,
+            commands_m6::ai_import_sessions,
+            commands_m6::ai_import_export_file,
+            commands_m6::ai_cli_bridge_status,
+            commands_m6::ai_install_cli_bridge,
             commands_m6::mcp_get_enabled,
             commands_m6::mcp_set_enabled,
             mcp_info,
