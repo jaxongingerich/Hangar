@@ -5,6 +5,7 @@ pub mod commands_m3;
 pub mod commands_m4;
 pub mod commands_m5;
 pub mod commands_m6;
+pub mod commands_m7;
 pub mod ai;
 pub mod import;
 pub mod mcp;
@@ -304,7 +305,8 @@ pub fn run() {
             commands_m5::ai_status_report,
             commands_m5::ai_weekly_digest,
             commands_m5::ai_smart_rename,
-            commands_m5::ai_project_chat,
+            commands_m7::ai_project_chat,
+            commands_m7::ai_evaluate_progress,
             commands_m6::ai_list_profiles,
             commands_m6::ai_save_profile,
             commands_m6::ai_delete_profile,

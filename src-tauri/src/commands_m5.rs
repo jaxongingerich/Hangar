@@ -63,7 +63,7 @@ pub fn ai_set_key(key: String) -> AppResult<()> {
     Ok(())
 }
 
-fn load_provider(conn: &Connection) -> AppResult<Provider> {
+pub fn load_provider(conn: &Connection) -> AppResult<Provider> {
     // Provider profiles (AI tab) take precedence; the legacy single-provider
     // settings remain as a fallback for configs from older versions.
     if let Some(p) = crate::commands_m6::load_active_profile_provider(conn) {
@@ -96,7 +96,7 @@ fn load_provider(conn: &Connection) -> AppResult<Provider> {
     }
 }
 
-fn record_run(
+pub fn record_run(
     conn: &Connection,
     provider: &Provider,
     action: &str,
@@ -594,24 +594,4 @@ pub async fn ai_smart_rename(state: State<'_, AppState>, bin_id: i64) -> AppResu
     Ok(plan)
 }
 
-#[tauri::command]
-pub async fn ai_project_chat(
-    state: State<'_, AppState>,
-    project_id: i64,
-    messages: Vec<ChatMessage>,
-) -> AppResult<String> {
-    let brief = {
-        let conn = state.conn.lock().unwrap();
-        project_brief(&conn, project_id)?
-    };
-    run_ai(
-        &state,
-        "project_chat",
-        format!(
-            "You are Hangar's project assistant for a solo hardware/software founder. \
-             Answer using the project context below. Be direct and concrete.\n\n{brief}"
-        ),
-        messages,
-    )
-    .await
-}
+// `ai_project_chat` moved to commands_m7, where it gained tool use.

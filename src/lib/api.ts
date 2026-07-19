@@ -458,8 +458,27 @@ export const api = {
   aiWeeklyDigest: () => invoke<string>("ai_weekly_digest"),
   aiSmartRename: (binId: number) =>
     invoke<RenamePlanItem[]>("ai_smart_rename", { binId }),
-  aiProjectChat: (projectId: number, messages: { role: string; content: string }[]) =>
-    invoke<string>("ai_project_chat", { projectId, messages }),
+  aiProjectChat: (
+    projectId: number,
+    messages: { role: string; content: string }[],
+    opts?: {
+      profileId?: string | null;
+      attachments?: { file_id: number }[];
+      allowActions?: boolean;
+    },
+  ) =>
+    invoke<ProjectChatReply>("ai_project_chat", {
+      projectId,
+      messages,
+      profileId: opts?.profileId ?? null,
+      attachments: opts?.attachments ?? [],
+      allowActions: opts?.allowActions ?? true,
+    }),
+  aiEvaluateProgress: (projectId: number, profileId?: string | null) =>
+    invoke<ProgressEvaluation>("ai_evaluate_progress", {
+      projectId,
+      profileId: profileId ?? null,
+    }),
 
   aiListProfiles: () => invoke<AiProfile[]>("ai_list_profiles"),
   aiSaveProfile: (profile: {
@@ -533,6 +552,28 @@ export interface AiConfig {
   model: string;
   base_url: string;
   has_key: boolean;
+}
+
+/** One change the project chat made, shown as a receipt under the reply. */
+export interface ChatAction {
+  tool: string;
+  label: string;
+  ok: boolean;
+  detail: string;
+}
+
+export interface ProjectChatReply {
+  text: string;
+  actions: ChatAction[];
+}
+
+/** An AI's read on how far along a project is. Advisory — applying it is a
+ *  separate, explicit step. */
+export interface ProgressEvaluation {
+  percent: number;
+  current: number;
+  summary: string;
+  reasons: string[];
 }
 
 export interface AiProfile {

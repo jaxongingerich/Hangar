@@ -23,6 +23,9 @@ See `SPEC.md` for the full product spec and `DECISIONS.md` for judgment calls.
   health chips, and an idea backlog.
 - **Progress workspace** — weighted milestone kanban, tasks with natural-language
   dates, velocity and projected-finish math, activity heatmap, status reports.
+  Click the percentage to type your own number, or hit **AI evaluate** to have
+  your AI read the milestones, tasks and log and suggest one — with its
+  reasoning shown, and nothing applied until you say so.
 - **Inbox & filing** — drop files anywhere; rules and AI suggestions file them
   into the right project bins. Copy-never-move, journaled, undoable.
 - **Space** — treemap, blake3 duplicate finder, stale projects, archives.
@@ -52,6 +55,11 @@ See `SPEC.md` for the full product spec and `DECISIONS.md` for judgment calls.
   across different AIs, so you can hand a Claude thread to Codex and keep going.
 - **AI actions** — filing, summaries, milestones, renames. Every action is
   plan → approve → execute, never destructive.
+- **Project chat that can act** — open the chat inside any project and pick
+  which connected AI answers, attach project files for it to read, and let it
+  make changes: add tasks, move milestones, organize files into bins, set the
+  deadline. Every change it makes is listed under its reply, and the
+  "Can make changes" toggle turns acting off for a read-only conversation.
 - **MCP server** — optional (Settings toggle): `http://127.0.0.1:41748/mcp`
   lets Claude Code/Desktop drive Hangar with a full toolset. Local-only,
   bearer-token protected, and runs inside the app — no terminal involved. The

@@ -19,7 +19,9 @@ pub const MCP_PORT: u16 = 41748;
 pub struct McpState {
     pub db_path: PathBuf,
     pub token: String,
-    pub app: tauri::AppHandle,
+    /// `None` when tools are driven from somewhere other than the running app
+    /// (tests). Only used to emit the "refresh your views" event.
+    pub app: Option<tauri::AppHandle>,
 }
 
 pub fn ensure_token(conn: &Connection) -> AppResult<String> {
@@ -37,7 +39,7 @@ pub fn ensure_token(conn: &Connection) -> AppResult<String> {
 }
 
 pub fn start(app: tauri::AppHandle, db_path: PathBuf, token: String) {
-    let state = Arc::new(McpState { db_path, token, app });
+    let state = Arc::new(McpState { db_path, token, app: Some(app) });
     tauri::async_runtime::spawn(async move {
         let router = Router::new()
             .route("/mcp", post(handle))
@@ -120,7 +122,7 @@ fn tool(name: &str, desc: &str, props: Value, required: Value) -> Value {
     })
 }
 
-fn tool_defs() -> Vec<Value> {
+pub fn tool_defs() -> Vec<Value> {
     let pid = json!({"type": "integer", "description": "project id"});
     vec![
         tool("list_projects", "List all projects with status, progress, and paths", json!({}), json!([])),
@@ -167,10 +169,12 @@ fn open(state: &McpState) -> AppResult<Connection> {
 }
 
 fn notify(state: &McpState) {
-    let _ = state.app.emit("fs-changed", ());
+    if let Some(app) = &state.app {
+        let _ = app.emit("fs-changed", ());
+    }
 }
 
-fn call_tool(state: &McpState, name: &str, args: &Value) -> AppResult<Value> {
+pub fn call_tool(state: &McpState, name: &str, args: &Value) -> AppResult<Value> {
     let conn = open(state)?;
     let root = PathBuf::from(
         db::get_setting(&conn, "root")?.unwrap_or_default(),

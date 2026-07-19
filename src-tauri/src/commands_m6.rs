@@ -166,7 +166,7 @@ pub fn load_active_profile_provider(conn: &Connection) -> Option<Provider> {
     provider_from_profile(&p).ok()
 }
 
-fn profile_by_id(conn: &Connection, id: &str) -> AppResult<AiProfileStored> {
+pub fn profile_by_id(conn: &Connection, id: &str) -> AppResult<AiProfileStored> {
     load_profiles(conn)?
         .into_iter()
         .find(|p| p.id == id)

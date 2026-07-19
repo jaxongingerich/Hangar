@@ -10,7 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { api, MilestoneRow, ProjectDetail, TaskRow } from "../../lib/api";
+import { api, MilestoneRow, ProgressEvaluation, ProjectDetail, TaskRow } from "../../lib/api";
 import { HEALTH_COLORS as HEALTH_COLOR, HEALTH_LABELS as HEALTH_LABEL, STATUS_COLORS, tint } from "../../lib/format";
 import { ProgressRing } from "../../components/ProgressRing";
 import { useToasts } from "../../lib/store";
@@ -61,12 +61,37 @@ export function ProgressTab({ project }: { project: ProjectDetail }) {
   const ringColor = STATUS_COLORS[project.status] ?? "var(--color-solder)";
   const blocked = (tasks ?? []).filter((t) => t.blocked && !t.done);
 
+  const [evaluation, setEvaluation] = useState<ProgressEvaluation | null>(null);
+
+  const evaluate = useMutation({
+    mutationFn: () => api.aiEvaluateProgress(project.id),
+    onSuccess: setEvaluation,
+    onError: (e) => push(String(e), "error"),
+  });
+
+  /** Write a percentage and make it stick: milestone mode would otherwise
+   *  recompute the ring the next time a milestone moved. */
+  const applyProgress = async (value: number) => {
+    await api.setProgress(project.id, value);
+    if (project.progress_mode === "milestones") {
+      await api.setProgressMode(project.id, "manual");
+      push(`Progress set to ${value}% — switched off milestone tracking`);
+    } else {
+      push(`Progress set to ${value}%`);
+    }
+    invalidate();
+  };
+
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="mx-auto max-w-[860px] px-6 py-5">
         {/* Header stats */}
         <div className="mb-5 flex items-center gap-6 rounded-panel border border-line bg-panel p-5">
-          <ProgressRing value={project.progress} color={ringColor} size={72} stroke={5} />
+          <EditableRing
+            value={project.progress}
+            color={ringColor}
+            onCommit={applyProgress}
+          />
           <Stat label="velocity" value={`${stats?.velocity_per_week ?? 0 > 0 ? "+" : ""}${stats?.velocity_per_week ?? 0}%/wk`} />
           <Stat
             label="projected"
@@ -87,13 +112,34 @@ export function ProgressTab({ project }: { project: ProjectDetail }) {
           </div>
           <Stat label="last touch" value={stats?.days_since_touch != null ? `${stats.days_since_touch}d ago` : "—"} />
           <Stat label="this week" value={`${stats?.hours_this_week ?? 0}h`} />
-          <button
-            onClick={() => report.mutate()}
-            className="ml-auto self-start rounded-lg border border-line px-3 py-1.5 text-[12px] text-muted transition-colors hover:border-solder hover:text-solder"
-          >
-            Draft status report
-          </button>
+          <div className="ml-auto flex flex-col items-end gap-1.5">
+            <button
+              onClick={() => evaluate.mutate()}
+              disabled={evaluate.isPending}
+              className="rounded-lg border border-line px-3 py-1.5 text-[12px] text-muted transition-colors hover:border-solder hover:text-solder disabled:opacity-50"
+              title="Have your AI read the milestones, tasks and log, then estimate where this project stands"
+            >
+              {evaluate.isPending ? "Evaluating…" : "✳️ AI evaluate progress"}
+            </button>
+            <button
+              onClick={() => report.mutate()}
+              className="rounded-lg border border-line px-3 py-1.5 text-[12px] text-muted transition-colors hover:border-solder hover:text-solder"
+            >
+              Draft status report
+            </button>
+          </div>
         </div>
+
+        {evaluation && (
+          <Evaluation
+            evaluation={evaluation}
+            onApply={async () => {
+              await applyProgress(evaluation.percent);
+              setEvaluation(null);
+            }}
+            onDismiss={() => setEvaluation(null)}
+          />
+        )}
 
         {/* History chart */}
         {(stats?.history.length ?? 0) > 1 && (
@@ -149,6 +195,118 @@ export function ProgressTab({ project }: { project: ProjectDetail }) {
         {/* Heatmap */}
         {stats && <Heatmap data={stats.heatmap} />}
       </div>
+    </div>
+  );
+}
+
+/** The progress ring, with the number itself as the edit affordance: click it,
+ *  type a percentage, press Enter. */
+function EditableRing({
+  value,
+  color,
+  onCommit,
+}: {
+  value: number;
+  color: string;
+  onCommit: (value: number) => void | Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  const commit = () => {
+    const n = Number(draft.trim().replace(/%$/, ""));
+    setEditing(false);
+    if (!Number.isFinite(n)) return;
+    const clamped = Math.round(Math.min(100, Math.max(0, n)));
+    if (clamped !== value) onCommit(clamped);
+  };
+
+  if (editing) {
+    return (
+      <div className="flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-full border-2 border-solder">
+        <input
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commit();
+            if (e.key === "Escape") setEditing(false);
+          }}
+          inputMode="numeric"
+          aria-label="Progress percentage"
+          className="w-10 bg-transparent text-center font-mono text-[17px] focus:outline-none"
+        />
+        <span className="font-mono text-[12px] text-muted">%</span>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => {
+        setDraft(String(value));
+        setEditing(true);
+      }}
+      title="Click to type a percentage"
+      className="shrink-0 rounded-full transition-opacity hover:opacity-75"
+    >
+      <ProgressRing value={value} color={color} size={72} stroke={5} />
+    </button>
+  );
+}
+
+/** An AI's read on progress. Advisory only — nothing is written until the
+ *  user hits Apply. */
+function Evaluation({
+  evaluation,
+  onApply,
+  onDismiss,
+}: {
+  evaluation: ProgressEvaluation;
+  onApply: () => void;
+  onDismiss: () => void;
+}) {
+  const delta = evaluation.percent - evaluation.current;
+  return (
+    <div className="mb-5 rounded-panel border border-solder/40 bg-solder/5 p-4">
+      <div className="flex items-center gap-2.5">
+        <span className="font-mono text-[20px] font-medium">{evaluation.percent}%</span>
+        {delta !== 0 && (
+          <span
+            className="font-mono text-[11px]"
+            style={{ color: delta > 0 ? "var(--color-ok, var(--accent))" : "var(--color-st-late, var(--danger))" }}
+          >
+            {delta > 0 ? "+" : ""}
+            {delta} vs the ring
+          </span>
+        )}
+        <span className="text-[11px] uppercase tracking-wide text-muted">AI estimate</span>
+        <button
+          onClick={onApply}
+          className="ml-auto rounded-lg bg-solder px-3 py-1.5 text-[12px] font-semibold text-ink"
+        >
+          Use {evaluation.percent}%
+        </button>
+        <button
+          onClick={onDismiss}
+          className="rounded-lg border border-line px-3 py-1.5 text-[12px] text-muted hover:border-solder hover:text-solder"
+        >
+          Dismiss
+        </button>
+      </div>
+      {evaluation.summary && (
+        <p className="mt-2 text-[12.5px] leading-relaxed">{evaluation.summary}</p>
+      )}
+      {evaluation.reasons.length > 0 && (
+        <ul className="mt-2 flex flex-col gap-1">
+          {evaluation.reasons.map((r, i) => (
+            <li key={i} className="text-[12px] leading-relaxed text-muted">
+              — {r}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
