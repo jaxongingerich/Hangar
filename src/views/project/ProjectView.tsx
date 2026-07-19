@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 import { useToasts, useUi } from "../../lib/store";
 import { STATUS_COLORS, STATUS_LABELS } from "../../lib/format";
-import { ProgressRing } from "../../components/ProgressRing";
+import { EditableRing } from "../../components/EditableRing";
 import { FilesTab } from "./FilesTab";
 import { LogTab } from "./LogTab";
 import { ProgressTab } from "./ProgressTab";
@@ -123,7 +123,7 @@ export function ProjectView({ projectId }: { projectId: number }) {
               title="Progress"
             />
           )}
-          <ProgressRing value={project.progress} color={ringColor} size={36} stroke={3} />
+          <EditableRing project={project} color={ringColor} size={36} stroke={3} />
         </div>
       </div>
 

@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import { api, MilestoneRow, ProgressEvaluation, ProjectDetail, TaskRow } from "../../lib/api";
 import { HEALTH_COLORS as HEALTH_COLOR, HEALTH_LABELS as HEALTH_LABEL, STATUS_COLORS, tint } from "../../lib/format";
-import { ProgressRing } from "../../components/ProgressRing";
+import { EditableRing } from "../../components/EditableRing";
 import { useToasts } from "../../lib/store";
 
 
@@ -87,11 +87,7 @@ export function ProgressTab({ project }: { project: ProjectDetail }) {
       <div className="mx-auto max-w-[860px] px-6 py-5">
         {/* Header stats */}
         <div className="mb-5 flex items-center gap-6 rounded-panel border border-line bg-panel p-5">
-          <EditableRing
-            value={project.progress}
-            color={ringColor}
-            onCommit={applyProgress}
-          />
+          <EditableRing project={project} color={ringColor} />
           <Stat label="velocity" value={`${stats?.velocity_per_week ?? 0 > 0 ? "+" : ""}${stats?.velocity_per_week ?? 0}%/wk`} />
           <Stat
             label="projected"
@@ -196,63 +192,6 @@ export function ProgressTab({ project }: { project: ProjectDetail }) {
         {stats && <Heatmap data={stats.heatmap} />}
       </div>
     </div>
-  );
-}
-
-/** The progress ring, with the number itself as the edit affordance: click it,
- *  type a percentage, press Enter. */
-function EditableRing({
-  value,
-  color,
-  onCommit,
-}: {
-  value: number;
-  color: string;
-  onCommit: (value: number) => void | Promise<void>;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState("");
-
-  const commit = () => {
-    const n = Number(draft.trim().replace(/%$/, ""));
-    setEditing(false);
-    if (!Number.isFinite(n)) return;
-    const clamped = Math.round(Math.min(100, Math.max(0, n)));
-    if (clamped !== value) onCommit(clamped);
-  };
-
-  if (editing) {
-    return (
-      <div className="flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-full border-2 border-solder">
-        <input
-          autoFocus
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={commit}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") commit();
-            if (e.key === "Escape") setEditing(false);
-          }}
-          inputMode="numeric"
-          aria-label="Progress percentage"
-          className="w-10 bg-transparent text-center font-mono text-[17px] focus:outline-none"
-        />
-        <span className="font-mono text-[12px] text-muted">%</span>
-      </div>
-    );
-  }
-
-  return (
-    <button
-      onClick={() => {
-        setDraft(String(value));
-        setEditing(true);
-      }}
-      title="Click to type a percentage"
-      className="shrink-0 rounded-full transition-opacity hover:opacity-75"
-    >
-      <ProgressRing value={value} color={color} size={72} stroke={5} />
-    </button>
   );
 }
 
